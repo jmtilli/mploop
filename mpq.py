@@ -5,12 +5,23 @@ import time
 import io
 import sys
 import subprocess
+import random
+import getopt
 from pathlib import Path
+
+shuffle = False
+
+opts, args = getopt.getopt(sys.argv[1:], "s")
+for o, a in opts:
+    if o == '-s':
+        shuffle = True
+    else:
+        assert False, "unhandled option"
 
 def escape(x):
     return x.replace("\\", "\\\\").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
 
-if len(sys.argv) == 1:
+if len(args) == 0:
     lck = os.open(os.path.expanduser('~') + '/.mploop/db.txt', os.O_RDWR | os.O_CREAT, 0o777)
     with open(os.path.expanduser('~') + '/.mploop/db.txt', "r") as f:
         idx = 0
@@ -22,17 +33,16 @@ if len(sys.argv) == 1:
     os.close(lck)
     sys.exit(0)
 
-if len(sys.argv) < 2:
-    print("Usage: mpq a.ogg b.ogg c.ogg ...")
-    sys.exit(1)
-
 aps = []
 
-for fl in sys.argv[1:]:
+for fl in args:
     ap = os.path.abspath(fl)
     if not Path(ap).is_file():
         sys.exit(1)
     aps.append(ap)
+
+if shuffle:
+    random.shuffle(aps)
 
 lck = os.open(os.path.expanduser('~') + '/.mploop/db.txt', os.O_RDWR | os.O_CREAT, 0o777)
 with open(os.path.expanduser('~') + '/.mploop/db.txt', "a") as f:
