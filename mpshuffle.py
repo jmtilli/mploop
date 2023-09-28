@@ -37,4 +37,5 @@ with open(os.path.expanduser('~') + '/.mploop/db.txt', "w") as f:
         f.write('\n'.join(contents) + '\n')
 
 os.close(lck)
+os.unlink(path)
 sys.exit(0)
