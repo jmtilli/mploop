@@ -44,7 +44,8 @@ with open(path, "r") as f:
         contents.append(a)
         idx += 1
 with open(os.path.expanduser('~') + '/.mploop/db.txt', "w") as f:
-    f.write('\n'.join(contents) + '\n')
+    if contents != []:
+        f.write('\n'.join(contents) + '\n')
 
 os.close(lck)
 sys.exit(0)

@@ -46,5 +46,6 @@ if shuffle:
 
 lck = os.open(os.path.expanduser('~') + '/.mploop/db.txt', os.O_RDWR | os.O_CREAT, 0o777)
 with open(os.path.expanduser('~') + '/.mploop/db.txt', "a") as f:
-    f.write('\n'.join(aps) + '\n')
+    if aps != []:
+        f.write('\n'.join(aps) + '\n')
 os.close(lck)
