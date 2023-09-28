@@ -39,7 +39,7 @@ for fl in args:
     ap = os.path.abspath(fl)
     if not Path(ap).is_file():
         sys.exit(1)
-    aps.append(ap)
+    aps.append(escape(ap))
 
 if shuffle:
     random.shuffle(aps)
