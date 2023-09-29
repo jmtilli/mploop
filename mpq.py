@@ -10,11 +10,14 @@ import getopt
 from pathlib import Path
 
 shuffle = False
+insert = False
 
-opts, args = getopt.getopt(sys.argv[1:], "s")
+opts, args = getopt.getopt(sys.argv[1:], "si")
 for o, a in opts:
     if o == '-s':
         shuffle = True
+    elif o == '-i':
+        insert = True
     else:
         assert False, "unhandled option"
 
@@ -45,7 +48,21 @@ if shuffle:
     random.shuffle(aps)
 
 lck = os.open(os.path.expanduser('~') + '/.mploop/db.txt', os.O_RDWR | os.O_CREAT, 0o777)
-with open(os.path.expanduser('~') + '/.mploop/db.txt', "a") as f:
-    if aps != []:
-        f.write('\n'.join(aps) + '\n')
+if insert:
+    contents = []
+    with open(os.path.expanduser('~') + '/.mploop/db.txt', "r") as f:
+        idx = 0
+        for a in f.readlines():
+            if a and a[-1] == '\n':
+                a = a[:-1]
+            contents.append(a)
+            idx += 1
+    contents = aps + contents
+    with open(os.path.expanduser('~') + '/.mploop/db.txt', "w") as f:
+        if contents != []:
+            f.write('\n'.join(contents) + '\n')
+else:
+    with open(os.path.expanduser('~') + '/.mploop/db.txt', "a") as f:
+        if aps != []:
+            f.write('\n'.join(aps) + '\n')
 os.close(lck)
