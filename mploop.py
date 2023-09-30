@@ -33,8 +33,8 @@ while True:
     with open(os.path.expanduser('~') + '/.mploop/db.txt', 'r') as f:
         ln = f.readline()
         if ln == '':
-            time.sleep(1)
             os.close(lck)
+            time.sleep(1)
             continue
         if ln and ln[-1] == '\n':
             ln = ln[:-1]
