@@ -48,6 +48,7 @@ if shuffle:
     random.shuffle(aps)
 
 lck = os.open(os.path.expanduser('~') + '/.mploop/db.txt', os.O_RDWR | os.O_CREAT, 0o777)
+fcntl.flock(lck, fcntl.LOCK_EX)
 if insert:
     contents = []
     with open(os.path.expanduser('~') + '/.mploop/db.txt', "r") as f:
