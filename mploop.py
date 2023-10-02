@@ -7,6 +7,8 @@ import time
 import io
 import subprocess
 
+offset = 6.0
+
 def get_mp3_gain(ln):
     mimetype=subprocess.run(["file", "-b", "--mime-type", "--", ln], capture_output=True).stdout.decode("us-ascii")
     trackgain_db = 0.0
@@ -22,13 +24,13 @@ def get_mp3_gain(ln):
             if re.match("^Recommended \"Track\" dB change: [-+]?[0-9]+\.[0-9]+$", line):
                 numval = re.sub("^Recommended \"Track\" dB change: ", "", line)
                 try:
-                    trackgain_db = float(numval)
+                    trackgain_db = float(numval) + offset
                 except:
                     pass
             elif re.match("^Recommended \"Album\" dB change: [-+]?[0-9]+\.[0-9]+$", line):
                 numval = re.sub("^Recommended \"Album\" dB change: ", "", line)
                 try:
-                    albumgain_db = float(numval)
+                    albumgain_db = float(numval) + offset
                 except:
                     pass
     if albumgain_db != None:
@@ -60,13 +62,13 @@ def get_flac_gain(ln):
                 elif k == "REPLAYGAIN_ALBUM_GAIN":
                     if v[-3:] == " dB":
                         try:
-                            albumgain_db = float(v[:-3])
+                            albumgain_db = float(v[:-3]) + offset
                         except:
                             pass
                 elif k == "REPLAYGAIN_TRACK_GAIN":
                     if v[-3:] == " dB":
                         try:
-                            trackgain_db = float(v[:-3])
+                            trackgain_db = float(v[:-3]) + offset
                         except:
                             pass
     if albumgain_db != None:
@@ -94,13 +96,13 @@ def get_gain(ln):
             if k == "REPLAYGAIN_TRACK_GAIN":
                 if v[-3:] == " dB":
                     try:
-                        trackgain_db = float(v[:-3])
+                        trackgain_db = float(v[:-3]) + offset
                     except:
                         pass
             elif k == "REPLAYGAIN_ALBUM_GAIN":
                 if v[-3:] == " dB":
                     try:
-                        albumgain_db = float(v[:-3])
+                        albumgain_db = float(v[:-3]) + offset
                     except:
                         pass
     if albumgain_db != None:
