@@ -26,7 +26,7 @@ def get_mp3_gain(ln):
                 except:
                     pass
             elif re.match("^Recommended \"Album\" dB change: [-+]?[0-9]+\.[0-9]+$", line):
-                numval = re.sub("^Recommended \"Track\" dB change: ", "", line)
+                numval = re.sub("^Recommended \"Album\" dB change: ", "", line)
                 try:
                     albumgain_db = float(numval)
                 except:
