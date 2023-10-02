@@ -7,6 +7,34 @@ import time
 import io
 import subprocess
 
+def get_mp3_gain(ln):
+    mimetype=subprocess.run(["file", "-b", "--mime-type", "--", ln], capture_output=True).stdout.decode("us-ascii")
+    trackgain_db = 0.0
+    albumgain_db = None
+    if mimetype != "" and mimetype[-1] == "\n":
+        mimetype = mimetype[:-1]
+    if mimetype == "audio/mpeg":
+        try:
+            out = subprocess.run(["mp3gain", "-s", "c", "--", ln], capture_output=True).stdout.decode("utf-8").split("\n")
+        except FileNotFoundError:
+            return 0.0
+        for line in out[1:]:
+            if re.match("^Recommended \"Track\" dB change: [-+]?[0-9]+\.[0-9]+$", line):
+                numval = re.sub("^Recommended \"Track\" dB change: ", "", line)
+                try:
+                    trackgain_db = float(numval)
+                except:
+                    pass
+            elif re.match("^Recommended \"Album\" dB change: [-+]?[0-9]+\.[0-9]+$", line):
+                numval = re.sub("^Recommended \"Track\" dB change: ", "", line)
+                try:
+                    albumgain_db = float(numval)
+                except:
+                    pass
+    if albumgain_db != None:
+        return albumgain_db
+    return trackgain_db
+
 def get_flac_gain(ln):
     mimetype=subprocess.run(["file", "-b", "--mime-type", "--", ln], capture_output=True).stdout.decode("us-ascii")
     magic_ref = 89.0
@@ -53,6 +81,8 @@ def get_gain(ln):
         mimetype = mimetype[:-1]
     if mimetype == "audio/flac":
         return get_flac_gain(ln)
+    elif mimetype == "audio/mpeg":
+        return get_mp3_gain(ln)
     elif mimetype == "audio/ogg":
         out = subprocess.run(["vorbiscomment", "--", ln], capture_output=True).stdout.decode("utf-8").split("\n")
         for out1 in out:
