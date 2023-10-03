@@ -8,6 +8,7 @@ import io
 import subprocess
 
 offset = 6.0
+offset2 = 6.0
 
 def get_mp3_gain(ln):
     mimetype=subprocess.run(["file", "-b", "--mime-type", "--", ln], capture_output=True).stdout.decode("us-ascii")
@@ -148,5 +149,5 @@ while True:
         f.write(rest)
     os.close(lck)
     gain = get_gain(ln)
-    print("GAIN", gain)
-    subprocess.run(["mplayer", "-af", "volume=" + str(gain) + ":1", "--", ln])
+    print("GAIN", gain-offset2)
+    subprocess.run(["mplayer", "-af", "volume=" + str(gain-offset2) + ":1", "--", ln])
