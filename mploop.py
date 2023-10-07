@@ -139,6 +139,8 @@ while True:
         ln = f.readline()
         if ln == '':
             os.close(lck)
+            # Remove console input
+            subprocess.run(["bash", "-c", 'while read -t 0.1 -N 100 a; do true; done'])
             time.sleep(1)
             continue
         if ln and ln[-1] == '\n':
