@@ -14,5 +14,6 @@ The scripts are:
 
 * mpq for listing queue and enqueuing new songs
 * mprm for removing individual items from the queue
+* mpclear for clearing the entire queue
 * mpshuffle for shuffling the entire queue
 * vimp for more complex editing of the queue, such as targeted order changes
