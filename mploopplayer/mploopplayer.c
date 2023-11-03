@@ -281,7 +281,7 @@ void output_audio_frame(AVFrame *frame)
 	fflush(stdout);
 	bufloc = 0;
 	for (i = 0; i < frame->nb_samples; i++) {
-		for (ch = 0; ch < chcount; ch++) {
+		for (ch = 0; ch < (chcount>2 ? 2 : chcount); ch++) {
 			if (bufloc + data_size > (int)sizeof(buf)) {
 				fprintf(stderr, "Buffer size insufficient, very strange audio file\n");
 				handler_impl();
@@ -585,8 +585,57 @@ int main(int argc, char **argv)
 		chcount = 1;
 	} else if (adecctx->channel_layout == AV_CH_LAYOUT_STEREO) {
 		chcount = 2;
+	} else if (adecctx->channel_layout == AV_CH_LAYOUT_2POINT1) {
+		chcount = 3;
+	} else if (adecctx->channel_layout == AV_CH_LAYOUT_2_1) {
+		chcount = 3;
+	} else if (adecctx->channel_layout == AV_CH_LAYOUT_SURROUND) {
+		chcount = 3;
+	} else if (adecctx->channel_layout == AV_CH_LAYOUT_3POINT1) {
+		chcount = 4;
+	} else if (adecctx->channel_layout == AV_CH_LAYOUT_4POINT0) {
+		chcount = 4;
+	} else if (adecctx->channel_layout == AV_CH_LAYOUT_4POINT1) {
+		chcount = 5;
+	} else if (adecctx->channel_layout == AV_CH_LAYOUT_2_2) {
+		chcount = 4;
+	} else if (adecctx->channel_layout == AV_CH_LAYOUT_QUAD) {
+		chcount = 4;
+	} else if (adecctx->channel_layout == AV_CH_LAYOUT_5POINT0) {
+		chcount = 5;
+	} else if (adecctx->channel_layout == AV_CH_LAYOUT_5POINT1) {
+		chcount = 6;
+	} else if (adecctx->channel_layout == AV_CH_LAYOUT_5POINT0_BACK) {
+		chcount = 5;
+	} else if (adecctx->channel_layout == AV_CH_LAYOUT_5POINT1_BACK) {
+		chcount = 6;
+	} else if (adecctx->channel_layout == AV_CH_LAYOUT_6POINT0) {
+		chcount = 6;
+	} else if (adecctx->channel_layout == AV_CH_LAYOUT_6POINT0_FRONT) {
+		chcount = 6;
+	} else if (adecctx->channel_layout == AV_CH_LAYOUT_HEXAGONAL) {
+		chcount = 6;
+	} else if (adecctx->channel_layout == AV_CH_LAYOUT_6POINT1) {
+		chcount = 7;
+	} else if (adecctx->channel_layout == AV_CH_LAYOUT_6POINT1_BACK) {
+		chcount = 7;
+	} else if (adecctx->channel_layout == AV_CH_LAYOUT_6POINT1_FRONT) {
+		chcount = 7;
+	} else if (adecctx->channel_layout == AV_CH_LAYOUT_7POINT0) {
+		chcount = 7;
+	} else if (adecctx->channel_layout == AV_CH_LAYOUT_7POINT0_FRONT) {
+		chcount = 7;
+	} else if (adecctx->channel_layout == AV_CH_LAYOUT_7POINT1) {
+		chcount = 8;
+	} else if (adecctx->channel_layout == AV_CH_LAYOUT_7POINT1_WIDE) {
+		chcount = 8;
+	} else if (adecctx->channel_layout == AV_CH_LAYOUT_7POINT1_WIDE_BACK) {
+		chcount = 8;
+	} else if (adecctx->channel_layout == AV_CH_LAYOUT_OCTAGONAL) {
+		chcount = 8;
+	} else if (adecctx->channel_layout == AV_CH_LAYOUT_STEREO_DOWNMIX) {
+		chcount = 2;
 	} else {
-		// TODO support other channel confs
 		fprintf(stderr, "Unsupported channel conf %lld\n", (long long)adecctx->channel_layout);
 		handler_impl();
 		exit(1);
@@ -683,7 +732,7 @@ int main(int argc, char **argv)
 		handler_impl();
 		exit(1);
 	}
-       	sdl_stream = SDL_NewAudioStream(audio_format_as_sdl, chcount, adecctx->sample_rate, obtained.format, obtained.channels, obtained.freq);
+	sdl_stream = SDL_NewAudioStream(audio_format_as_sdl, chcount > 2 ? 2 : chcount, adecctx->sample_rate, obtained.format, obtained.channels, obtained.freq);
 	if (obtained.format == AUDIO_S32 || obtained.format == AUDIO_S32LSB || obtained.format == AUDIO_S32MSB || obtained.format == AUDIO_S32SYS || obtained.format == AUDIO_F32 || obtained.format == AUDIO_F32LSB || obtained.format == AUDIO_F32MSB || obtained.format == AUDIO_F32SYS) {
 		obtained_data_size = 4;
 	}
