@@ -11,6 +11,10 @@ import select
 import fcntl
 import errno
 
+mploopplayer = os.path.dirname(os.path.realpath(sys.argv[0])) + '/mploopplayer/mploopplayer'
+if not os.access(mploopplayer, os.X_OK):
+    mplooplayer = None
+
 # Mandatory tools to run:
 # - mplayer
 # - file
@@ -384,5 +388,8 @@ while True:
         v = comment[1]
         print(pretty + ' ' + v)
     print(80*"-")
-    subprocess.run(["mplayer", "-novideo", "-nolirc", "-msglevel", "all=0:statusline=5:cplayer=5", "-af", "volume=" + str(gain-offset2) + ":1", "--", ln])
+    if mploopplayer:
+        subprocess.run([mploopplayer, "-g", str(gain-offset2), "--", ln])
+    else:
+        subprocess.run(["mplayer", "-novideo", "-nolirc", "-msglevel", "all=0:statusline=5:cplayer=5", "-af", "volume=" + str(gain-offset2) + ":1", "--", ln])
     print("")
