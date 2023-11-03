@@ -1,0 +1,9 @@
+@toplevel
+@strict
+
+$CC = "cc"
+$CFLAGS = ["-Wall", "-Wextra", "-O3"]
+
+@phonyrule: 'all': 'mploopplayer/all'
+
+@dirinclude ["mploopplayer"]

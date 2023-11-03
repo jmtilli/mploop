@@ -1,0 +1,9 @@
+@subfile
+@strict
+
+$LIBS = ["-lavformat", "-lavcodec", "-lavutil", "-lSDL2", "-lm"]
+
+@phonyrule: 'all': 'mploopplayer'
+
+@distrule: 'mploopplayer': 'mploopplayer.c'
+@	[$(CC), "-o", "mploopplayer", "mploopplayer.c", @$(CFLAGS), @$(LIBS)]
