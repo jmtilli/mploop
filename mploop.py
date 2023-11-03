@@ -11,6 +11,16 @@ import select
 import fcntl
 import errno
 
+# Mandatory tools to run:
+# - mplayer
+# - file
+# Recommended tools to run:
+# - id3v2
+# - id3tool
+# - mp3gain
+# - metaflac
+# - vorbiscomment
+
 def clear_stdin():
     old_settings = termios.tcgetattr(sys.stdin)
     new_settings = termios.tcgetattr(sys.stdin)
