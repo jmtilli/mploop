@@ -49,13 +49,115 @@ def get_mp3_gain(ln):
     mimetype=subprocess.run(["file", "-b", "--mime-type", "--", ln], capture_output=True).stdout.decode("us-ascii")
     trackgain_db = 0.0
     albumgain_db = None
+    comments = []
     if mimetype != "" and mimetype[-1] == "\n":
         mimetype = mimetype[:-1]
     if mimetype == "audio/mpeg":
         try:
+            ln2 = ln
+            if ln2 and ln2[0] == '-':
+                ln2 = './' + ln2
+            out = subprocess.run(["id3v2", "-l", ln2], capture_output=True).stdout.decode("utf-8").split("\n")
+            process = False
+            for line in out[1:]:
+                rem = re.match("^id3v2 tag info for (.*):$", line)
+                if rem:
+                    process = True
+                if not process:
+                    continue
+                rem = re.match("^COMM \\([^):]*\\): (.*)$", line)
+                if rem:
+                    comments.append(("COMMENT", rem.group(1)))
+                rem = re.match("^TXXX \\([^):]*\\): (.*)$", line)
+                if rem:
+                    comments.append(("DESCRIPTION", rem.group(1)))
+                rem = re.match("^TCOM \\([^):]*\\): (.*)$", line)
+                if rem:
+                    comments.append(("COMPOSER", rem.group(1)))
+                rem = re.match("^TCOP \\([^):]*\\): (.*)$", line)
+                if rem:
+                    comments.append(("COPYRIGHT", rem.group(1)))
+                rem = re.match("^WCOP \\([^):]*\\): (.*)$", line)
+                if rem:
+                    comments.append(("COPYRIGHT", rem.group(1)))
+                rem = re.match("^TENC \\([^):]*\\): (.*)$", line)
+                if rem:
+                    comments.append(("ENCODED-BY", rem.group(1)))
+                rem = re.match("^TEXT \\([^):]*\\): (.*)$", line)
+                if rem:
+                    comments.append(("LYRICIST", rem.group(1)))
+                rem = re.match("^TIT1 \\([^):]*\\): (.*)$", line)
+                if rem:
+                    comments.append(("TITLE", rem.group(1)))
+                rem = re.match("^TIT2 \\([^):]*\\): (.*)$", line)
+                if rem:
+                    comments.append(("TITLE", rem.group(1)))
+                rem = re.match("^TIT3 \\([^):]*\\): (.*)$", line)
+                if rem:
+                    comments.append(("SUBTITLE", rem.group(1)))
+                rem = re.match("^TPE1 \\([^):]*\\): (.*)$", line)
+                if rem:
+                    comments.append(("ARTIST", rem.group(1)))
+                rem = re.match("^TPE2 \\([^):]*\\): (.*)$", line)
+                if rem:
+                    comments.append(("ARTIST", rem.group(1)))
+                rem = re.match("^TPE3 \\([^):]*\\): (.*)$", line)
+                if rem:
+                    comments.append(("CONDUCTOR", rem.group(1)))
+                rem = re.match("^TPE4 \\([^):]*\\): (.*)$", line)
+                if rem:
+                    comments.append(("REMIXER", rem.group(1)))
+                rem = re.match("^TPUB \\([^):]*\\): (.*)$", line)
+                if rem:
+                    comments.append(("PUBLISHER", rem.group(1)))
+                rem = re.match("^TSRC \\([^):]*\\): (.*)$", line)
+                if rem:
+                    comments.append(("ISRC", rem.group(1)))
+                rem = re.match("^TALB \\([^):]*\\): (.*)$", line)
+                if rem:
+                    comments.append(("ALBUM", rem.group(1)))
+                rem = re.match("^TRCK \\([^):]*\\): (.*)$", line)
+                if rem:
+                    comments.append(("TRACKNUMBER", rem.group(1)))
+                rem = re.match("^TDAT \\([^):]*\\): (.*)$", line)
+                if rem:
+                    comments.append(("DATE", rem.group(1)))
+                rem = re.match("^TYER \\([^):]*\\): (.*)$", line)
+                if rem:
+                    comments.append(("YEAR", rem.group(1)))
+                rem = re.match("^TCON \\([^):]*\\): (.*)$", line)
+                if rem:
+                    comments.append(("GENRE", rem.group(1)))
+        except FileNotFoundError:
+            pass
+        if comments == []:
+            try:
+                out = subprocess.run(["id3tool", "--", ln], capture_output=True).stdout.decode("utf-8").split("\n")
+                for line in out[1:]:
+                    rem = re.match("^Song Title:\t(.*)$", line)
+                    if rem:
+                        comments.append(("TITLE", rem.group(1)))
+                    rem = re.match("^Artist:\t\t(.*)$", line)
+                    if rem:
+                        comments.append(("ARTIST", rem.group(1)))
+                    rem = re.match("^Album:\t\t(.*)$", line)
+                    if rem:
+                        comments.append(("ALBUM", rem.group(1)))
+                    rem = re.match("^Track:\t\t(.*)$", line)
+                    if rem:
+                        comments.append(("TRACKNUMBER", rem.group(1)))
+                    rem = re.match("^Year:\t\t(.*)$", line)
+                    if rem:
+                        comments.append(("DATE", rem.group(1)))
+                    rem = re.match("^Genre:\t\t(.*)$", line)
+                    if rem:
+                        comments.append(("GENRE", rem.group(1)))
+            except FileNotFoundError:
+                pass
+        try:
             out = subprocess.run(["mp3gain", "-s", "c", "--", ln], capture_output=True).stdout.decode("utf-8").split("\n")
         except FileNotFoundError:
-            return (0.0, [])
+            return (0.0, comments)
         for line in out[1:]:
             if re.match("^Recommended \"Track\" dB change: [-+]?[0-9]+\.[0-9]+$", line):
                 numval = re.sub("^Recommended \"Track\" dB change: ", "", line)
@@ -70,8 +172,8 @@ def get_mp3_gain(ln):
                 except:
                     pass
     if albumgain_db != None:
-        return (albumgain_db, [])
-    return (trackgain_db, [])
+        return (albumgain_db, comments)
+    return (trackgain_db, comments)
 
 def get_flac_gain(ln):
     mimetype=subprocess.run(["file", "-b", "--mime-type", "--", ln], capture_output=True).stdout.decode("us-ascii")
