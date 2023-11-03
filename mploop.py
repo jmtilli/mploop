@@ -62,6 +62,7 @@ def clear_stdin():
 
 offset = 6.0
 offset2 = 6.0
+mploopplayer_extraoffset = 15.0
 
 def get_mp3_gain(ln):
     mimetype=subprocess.run(["file", "-b", "--mime-type", "--", ln], capture_output=True).stdout.decode("us-ascii")
@@ -389,7 +390,7 @@ while True:
         print(pretty + ' ' + v)
     print(80*"-")
     if mploopplayer:
-        subprocess.run([mploopplayer, "-g", str(gain-offset2), "--", ln])
+        subprocess.run([mploopplayer, "-g", str(gain-offset2-mploopplayer_extraoffset), "--", ln])
     else:
         subprocess.run(["mplayer", "-novideo", "-nolirc", "-msglevel", "all=0:statusline=5:cplayer=5", "-af", "volume=" + str(gain-offset2) + ":1", "--", ln])
     print("")
