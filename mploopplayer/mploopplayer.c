@@ -532,11 +532,16 @@ int main(int argc, char **argv)
 
 	SDL_Init(SDL_INIT_AUDIO);
 
+	int stderr_dup = dup(2);
+	int devnull = open("/dev/null", O_RDWR);
+	dup2(devnull, 2); // Avoid opus message from ogg: "693 bytes of comment header remain"
 	if (avformat_open_input(&avfctx, fnamebuf, NULL, NULL) < 0) {
+		dup2(stderr_dup, 2);
 		fprintf(stderr, "File %s is probably not an audio file, can't open it\n", argv[optind]);
 		handler_impl();
 		exit(1);
 	}
+	dup2(stderr_dup, 2);
 	if (avformat_find_stream_info(avfctx, NULL) < 0) {
 		fprintf(stderr, "File %s is probably not an audio file, can't find stream info\n", argv[optind]);
 		handler_impl();
@@ -770,7 +775,9 @@ int main(int argc, char **argv)
 	// SIGPIPE: can't write to terminal output, probably no need to reset the terminal
 	while (av_read_frame(avfctx, packet) >= 0) {
 		if (packet->stream_index == aidx) {
+			dup2(devnull, 2); // Avoid opus message "Could not update timestamps for skipped samples."
 			ret = avcodec_send_packet(adecctx, packet);
+			dup2(stderr_dup, 2);
 			if (ret < 0) {
 				fprintf(stderr, "Cannot send packet to AV codec, probably corrupted file\n");
 				handler_impl();
