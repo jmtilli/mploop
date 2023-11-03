@@ -586,6 +586,7 @@ int main(int argc, char **argv)
 	} else if (adecctx->channel_layout == AV_CH_LAYOUT_STEREO) {
 		chcount = 2;
 	} else {
+		// TODO support other channel confs
 		fprintf(stderr, "Unsupported channel conf %lld\n", (long long)adecctx->channel_layout);
 		handler_impl();
 		exit(1);
