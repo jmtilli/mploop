@@ -532,15 +532,6 @@ int main(int argc, char **argv)
 
 	SDL_Init(SDL_INIT_AUDIO);
 
-#if 0
-	//const char *vorbis = "file:/home/juhis/vboxshared/Music/Ellips/Yhden naisen hautajaiset/01-Maailma on rikki.ogg";
-	const char *vorbis = "file:/home/juhis/vboxshared/Music/Haloo Helsinki!/Haloo Box! 4 (Maailma On Tehty Meitä Varten)/01-Avautumisraita.ogg";
-	const char *flac = "file:/home/juhis/vboxshared/Music/Haloo Helsinki!/Haloo Box! 4 (Maailma On Tehty Meitä Varten)/test/01-Avautumisraita.flac";
-	const char *oggflac = "file:/home/juhis/vboxshared/Music/Haloo Helsinki!/Haloo Box! 4 (Maailma On Tehty Meitä Varten)/test/01-Avautumisraita.oga";
-	const char *aac = "file:/home/juhis/vboxshared/Music/Haloo Helsinki!/Haloo Box! 4 (Maailma On Tehty Meitä Varten)/test/01-Avautumisraita.aac";
-	const char *mp3 = "file:/home/juhis/vboxshared/Music/Haloo Helsinki!/Haloo Box! 4 (Maailma On Tehty Meitä Varten)/test/01-Avautumisraita.mp3";
-#endif
-
 	if (avformat_open_input(&avfctx, fnamebuf, NULL, NULL) < 0) {
 		fprintf(stderr, "File %s is probably not an audio file, can't open it\n", argv[optind]);
 		handler_impl();
