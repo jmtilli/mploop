@@ -172,10 +172,26 @@ fcntl.flock(mainlck, fcntl.LOCK_EX | fcntl.LOCK_NB)
 
 last_seen = time.monotonic()
 
+expanded = os.path.expanduser('~') + '/.mploop/db.txt'
+
 while True:
-    lck =  os.open(os.path.expanduser('~') + '/.mploop/db.txt', os.O_RDWR | os.O_CREAT, 0o777)
+    if os.stat(expanded).st_size == 0:
+        # Remove console input
+        clear_stdin()
+        #subprocess.run(["bash", "-c", 'while read -t 0.1 -N 100 a; do true; done'])
+        now_monotonic = time.monotonic()
+        if now_monotonic - last_seen < 60:
+            time.sleep(0.3)
+        elif now_monotonic - last_seen < 600:
+            time.sleep(1)
+        else:
+            time.sleep(2)
+        clear_stdin()
+        continue
+    expanded = os.path.expanduser('~') + '/.mploop/db.txt'
+    lck =  os.open(expanded, os.O_RDWR | os.O_CREAT, 0o777)
     fcntl.flock(lck, fcntl.LOCK_EX)
-    with open(os.path.expanduser('~') + '/.mploop/db.txt', 'r') as f:
+    with open(expanded, 'r') as f:
         ln = f.readline()
         if ln == '':
             os.close(lck)
@@ -196,7 +212,7 @@ while True:
             ln = ln[:-1]
         ln = unescape(ln)
         rest = ''.join(f.readlines())
-    with open(os.path.expanduser('~') + '/.mploop/db.txt', "w") as f:
+    with open(expanded, "w") as f:
         f.write(rest)
     os.close(lck)
     gain = get_gain(ln)
