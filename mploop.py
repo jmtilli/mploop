@@ -30,6 +30,7 @@ def clear_stdin():
     fcntl.fcntl(sys.stdin, fcntl.F_SETFL, old_flags | os.O_NONBLOCK)
     y = select.poll()
     y.register(sys.stdin, select.POLLIN)
+    seen_input = False
     while True:
         if y.poll(1):
             try:
@@ -39,6 +40,8 @@ def clear_stdin():
                         termios.tcsetattr(sys.stdin, termios.TCSANOW, old_settings)
                         fcntl.fcntl(sys.stdin, fcntl.F_SETFL, old_flags)
                         break
+                    else:
+                        seen_input = True
             except OSError as e:
                 if e.args[0] == errno.EAGAIN or e.args[0] == errno.EWOULDBLOCK:
                     # Just in case stdin and stdout are both the same fd
@@ -51,6 +54,7 @@ def clear_stdin():
             break
     termios.tcsetattr(sys.stdin, termios.TCSANOW, old_settings)
     fcntl.fcntl(sys.stdin, fcntl.F_SETFL, old_flags)
+    return seen_input
 
 offset = 6.0
 offset2 = 6.0
@@ -326,7 +330,6 @@ expanded = os.path.expanduser('~') + '/.mploop/db.txt'
 while True:
     if os.stat(expanded).st_size == 0:
         # Remove console input
-        clear_stdin()
         #subprocess.run(["bash", "-c", 'while read -t 0.1 -N 100 a; do true; done'])
         now_monotonic = time.monotonic()
         if now_monotonic - last_seen < 60:
@@ -335,7 +338,6 @@ while True:
             time.sleep(1)
         else:
             time.sleep(2)
-        clear_stdin()
         continue
     expanded = os.path.expanduser('~') + '/.mploop/db.txt'
     lck =  os.open(expanded, os.O_RDWR | os.O_CREAT, 0o777)
@@ -345,7 +347,6 @@ while True:
         if ln == '':
             os.close(lck)
             # Remove console input
-            clear_stdin()
             #subprocess.run(["bash", "-c", 'while read -t 0.1 -N 100 a; do true; done'])
             now_monotonic = time.monotonic()
             if now_monotonic - last_seen < 60:
@@ -354,7 +355,6 @@ while True:
                 time.sleep(1)
             else:
                 time.sleep(2)
-            clear_stdin()
             continue
         last_seen = time.monotonic()
         if ln and ln[-1] == '\n':
@@ -365,6 +365,8 @@ while True:
         f.write(rest)
     os.close(lck)
     gain,comments = get_gain(ln)
+    if clear_stdin():
+        print("")
     print(80*"=")
     print("Applying gain:", gain-offset2)
     print("File:", ln)
