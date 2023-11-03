@@ -286,6 +286,7 @@ def unescape(x):
                 res.write('\\')
             else:
                 assert False
+            escape = False
         elif ch == '\\':
             escape = True
             continue
