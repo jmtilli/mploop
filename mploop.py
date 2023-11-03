@@ -55,7 +55,7 @@ def get_mp3_gain(ln):
         try:
             out = subprocess.run(["mp3gain", "-s", "c", "--", ln], capture_output=True).stdout.decode("utf-8").split("\n")
         except FileNotFoundError:
-            return 0.0
+            return (0.0, [])
         for line in out[1:]:
             if re.match("^Recommended \"Track\" dB change: [-+]?[0-9]+\.[0-9]+$", line):
                 numval = re.sub("^Recommended \"Track\" dB change: ", "", line)
@@ -70,8 +70,8 @@ def get_mp3_gain(ln):
                 except:
                     pass
     if albumgain_db != None:
-        return albumgain_db
-    return trackgain_db
+        return (albumgain_db, [])
+    return (trackgain_db, [])
 
 def get_flac_gain(ln):
     mimetype=subprocess.run(["file", "-b", "--mime-type", "--", ln], capture_output=True).stdout.decode("us-ascii")
@@ -79,10 +79,14 @@ def get_flac_gain(ln):
     ref = 89.0
     trackgain_db = 0.0
     albumgain_db = None
+    comments = []
     if mimetype != "" and mimetype[-1] == "\n":
         mimetype = mimetype[:-1]
     if mimetype == "audio/flac":
-        out = subprocess.run(["metaflac", "--list", "--block-type=VORBIS_COMMENT", "--", ln], capture_output=True).stdout.decode("utf-8").split("\n")
+        try:
+            out = subprocess.run(["metaflac", "--list", "--block-type=VORBIS_COMMENT", "--", ln], capture_output=True).stdout.decode("utf-8").split("\n")
+        except FileNotFoundError:
+            return (0.0, [])
         for out1 in out:
             if out1[:12] == "    comment[":
                 cval = re.sub("^    comment\\[[0-9]+\\]: ", "", out1)
@@ -107,14 +111,21 @@ def get_flac_gain(ln):
                             trackgain_db = float(v[:-3]) + offset
                         except:
                             pass
+                elif k == 'REPLAYGAIN_ALBUM_PEAK' or k == 'REPLAYGAIN_TRACK_PEAK':
+                    pass
+                else:
+                    comments.append((k,v))
     if albumgain_db != None:
-        return albumgain_db + (magic_ref - ref)
-    return trackgain_db + (magic_ref - ref)
+        return (albumgain_db + (magic_ref - ref), comments)
+    return (trackgain_db + (magic_ref - ref), comments)
 
 def get_gain(ln):
     mimetype=subprocess.run(["file", "-b", "--mime-type", "--", ln], capture_output=True).stdout.decode("us-ascii")
+    magic_ref = 89.0
+    ref = 89.0
     trackgain_db = 0.0
     albumgain_db = None
+    comments = []
     if mimetype != "" and mimetype[-1] == "\n":
         mimetype = mimetype[:-1]
     if mimetype == "audio/flac":
@@ -122,14 +133,23 @@ def get_gain(ln):
     elif mimetype == "audio/mpeg":
         return get_mp3_gain(ln)
     elif mimetype == "audio/ogg":
-        out = subprocess.run(["vorbiscomment", "--", ln], capture_output=True).stdout.decode("utf-8").split("\n")
+        try:
+            out = subprocess.run(["vorbiscomment", "--", ln], capture_output=True).stdout.decode("utf-8").split("\n")
+        except FileNotFoundError:
+            return (0.0, [])
         for out1 in out:
             if out1 == '':
                 continue
             if "=" not in out1:
                 continue
             k,v = out1.split("=", 1)
-            if k == "REPLAYGAIN_TRACK_GAIN":
+            if k == "REPLAYGAIN_REFERENCE_LOUDNESS":
+                if v[-3:] == " dB":
+                    try:
+                        ref = float(v[:-3])
+                    except:
+                        pass
+            elif k == "REPLAYGAIN_TRACK_GAIN":
                 if v[-3:] == " dB":
                     try:
                         trackgain_db = float(v[:-3]) + offset
@@ -141,9 +161,13 @@ def get_gain(ln):
                         albumgain_db = float(v[:-3]) + offset
                     except:
                         pass
+            elif k == 'REPLAYGAIN_ALBUM_PEAK' or k == 'REPLAYGAIN_TRACK_PEAK':
+                pass
+            else:
+                comments.append((k,v))
     if albumgain_db != None:
-        return albumgain_db
-    return trackgain_db
+        return (albumgain_db + (magic_ref - ref), comments)
+    return (trackgain_db + (magic_ref - ref), comments)
 
 def unescape(x):
     res = io.StringIO()
@@ -215,6 +239,21 @@ while True:
     with open(expanded, "w") as f:
         f.write(rest)
     os.close(lck)
-    gain = get_gain(ln)
-    print("GAIN", gain-offset2)
+    gain,comments = get_gain(ln)
+    print(80*"=")
+    print("Applying gain:", gain-offset2)
+    for comment in comments:
+        k = comment[0]
+        pretty = k
+        if k == 'TRACKNUMBER':
+            pretty = 'Track number:'
+        elif k == 'COPYRIGHT':
+            pretty = 'Copyright'
+        elif k == '':
+            pretty = 'Comment:'
+        else:
+            pretty = k[0:1].upper() + k[1:].lower() + ':'
+        v = comment[1]
+        print(pretty + ' ' + v)
+    print(80*"-")
     subprocess.run(["mplayer", "-af", "volume=" + str(gain-offset2) + ":1", "--", ln])
