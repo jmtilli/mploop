@@ -357,6 +357,7 @@ while True:
     gain,comments = get_gain(ln)
     print(80*"=")
     print("Applying gain:", gain-offset2)
+    print("File:", ln)
     for comment in comments:
         k = comment[0]
         pretty = k
