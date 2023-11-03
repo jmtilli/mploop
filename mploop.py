@@ -372,5 +372,5 @@ while True:
         v = comment[1]
         print(pretty + ' ' + v)
     print(80*"-")
-    subprocess.run(["mplayer", "-msglevel", "all=0:statusline=5", "-af", "volume=" + str(gain-offset2) + ":1", "--", ln])
+    subprocess.run(["mplayer", "-nolirc", "-msglevel", "all=0:statusline=5", "-af", "volume=" + str(gain-offset2) + ":1", "--", ln])
     print("")
