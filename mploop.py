@@ -57,75 +57,87 @@ def get_mp3_gain(ln):
             ln2 = ln
             if ln2 and ln2[0] == '-':
                 ln2 = './' + ln2
+            newlinecnt = ln2.count('\n')
             out = subprocess.run(["id3v2", "-l", ln2], capture_output=True).stdout.decode("utf-8").split("\n")
-            process = False
+            firstprocess = False
+            newlineseen = 0
+            secondprocess = False
             for line in out[1:]:
-                rem = re.match("^id3v2 tag info for (.*):$", line)
-                if rem:
-                    process = True
-                if not process:
+                if firstprocess and newlineseen < newlinecnt:
+                    newlineseen += 1
+                    if newlineseen < newlinecnt:
+                        continue
+                elif not firstprocess:
+                    rem = re.match("^id3v2 tag info for (.*)$", line)
+                    if rem:
+                        firstprocess = True
+                if firstprocess and newlineseen == newlinecnt:
+                    rem = re.match("^(.*):$", line)
+                    if rem:
+                        secondprocess = True
+                if not secondprocess:
                     continue
-                rem = re.match("^COMM \\([^):]*\\): (.*)$", line)
+                rem = re.match("^COMM \\([^:]*\\): (.*)$", line)
                 if rem:
                     comments.append(("COMMENT", rem.group(1)))
-                rem = re.match("^TXXX \\([^):]*\\): (.*)$", line)
+                rem = re.match("^TXXX \\([^:]*\\): (.*)$", line)
                 if rem:
                     comments.append(("DESCRIPTION", rem.group(1)))
-                rem = re.match("^TCOM \\([^):]*\\): (.*)$", line)
+                rem = re.match("^TCOM \\([^:]*\\): (.*)$", line)
                 if rem:
                     comments.append(("COMPOSER", rem.group(1)))
-                rem = re.match("^TCOP \\([^):]*\\): (.*)$", line)
+                rem = re.match("^TCOP \\([^:]*\\): (.*)$", line)
                 if rem:
                     comments.append(("COPYRIGHT", rem.group(1)))
-                rem = re.match("^WCOP \\([^):]*\\): (.*)$", line)
+                rem = re.match("^WCOP \\([^:]*\\): (.*)$", line)
                 if rem:
                     comments.append(("COPYRIGHT", rem.group(1)))
-                rem = re.match("^TENC \\([^):]*\\): (.*)$", line)
+                rem = re.match("^TENC \\([^:]*\\): (.*)$", line)
                 if rem:
                     comments.append(("ENCODED-BY", rem.group(1)))
-                rem = re.match("^TEXT \\([^):]*\\): (.*)$", line)
+                rem = re.match("^TEXT \\([^:]*\\): (.*)$", line)
                 if rem:
                     comments.append(("LYRICIST", rem.group(1)))
-                rem = re.match("^TIT1 \\([^):]*\\): (.*)$", line)
+                rem = re.match("^TIT1 \\([^:]*\\): (.*)$", line)
                 if rem:
                     comments.append(("TITLE", rem.group(1)))
-                rem = re.match("^TIT2 \\([^):]*\\): (.*)$", line)
+                rem = re.match("^TIT2 \\([^:]*\\): (.*)$", line)
                 if rem:
                     comments.append(("TITLE", rem.group(1)))
-                rem = re.match("^TIT3 \\([^):]*\\): (.*)$", line)
+                rem = re.match("^TIT3 \\([^:]*\\): (.*)$", line)
                 if rem:
                     comments.append(("SUBTITLE", rem.group(1)))
-                rem = re.match("^TPE1 \\([^):]*\\): (.*)$", line)
+                rem = re.match("^TPE1 \\([^:]*\\): (.*)$", line)
                 if rem:
                     comments.append(("ARTIST", rem.group(1)))
-                rem = re.match("^TPE2 \\([^):]*\\): (.*)$", line)
+                rem = re.match("^TPE2 \\([^:]*\\): (.*)$", line)
                 if rem:
                     comments.append(("ARTIST", rem.group(1)))
-                rem = re.match("^TPE3 \\([^):]*\\): (.*)$", line)
+                rem = re.match("^TPE3 \\([^:]*\\): (.*)$", line)
                 if rem:
                     comments.append(("CONDUCTOR", rem.group(1)))
-                rem = re.match("^TPE4 \\([^):]*\\): (.*)$", line)
+                rem = re.match("^TPE4 \\([^:]*\\): (.*)$", line)
                 if rem:
                     comments.append(("REMIXER", rem.group(1)))
-                rem = re.match("^TPUB \\([^):]*\\): (.*)$", line)
+                rem = re.match("^TPUB \\([^:]*\\): (.*)$", line)
                 if rem:
                     comments.append(("PUBLISHER", rem.group(1)))
-                rem = re.match("^TSRC \\([^):]*\\): (.*)$", line)
+                rem = re.match("^TSRC \\([^:]*\\): (.*)$", line)
                 if rem:
                     comments.append(("ISRC", rem.group(1)))
-                rem = re.match("^TALB \\([^):]*\\): (.*)$", line)
+                rem = re.match("^TALB \\([^:]*\\): (.*)$", line)
                 if rem:
                     comments.append(("ALBUM", rem.group(1)))
-                rem = re.match("^TRCK \\([^):]*\\): (.*)$", line)
+                rem = re.match("^TRCK \\([^:]*\\): (.*)$", line)
                 if rem:
                     comments.append(("TRACKNUMBER", rem.group(1)))
-                rem = re.match("^TDAT \\([^):]*\\): (.*)$", line)
+                rem = re.match("^TDAT \\([^:]*\\): (.*)$", line)
                 if rem:
                     comments.append(("DATE", rem.group(1)))
-                rem = re.match("^TYER \\([^):]*\\): (.*)$", line)
+                rem = re.match("^TYER \\([^:]*\\): (.*)$", line)
                 if rem:
                     comments.append(("YEAR", rem.group(1)))
-                rem = re.match("^TCON \\([^):]*\\): (.*)$", line)
+                rem = re.match("^TCON \\([^:]*\\): (.*)$", line)
                 if rem:
                     comments.append(("GENRE", rem.group(1)))
         except FileNotFoundError:
