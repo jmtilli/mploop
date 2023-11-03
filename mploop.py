@@ -170,6 +170,8 @@ def unescape(x):
 mainlck = os.open(os.path.expanduser('~') + '/.mploop/.mainlock', os.O_RDWR | os.O_CREAT, 0o777)
 fcntl.flock(mainlck, fcntl.LOCK_EX | fcntl.LOCK_NB)
 
+last_seen = time.monotonic()
+
 while True:
     lck =  os.open(os.path.expanduser('~') + '/.mploop/db.txt', os.O_RDWR | os.O_CREAT, 0o777)
     fcntl.flock(lck, fcntl.LOCK_EX)
@@ -180,9 +182,16 @@ while True:
             # Remove console input
             clear_stdin()
             #subprocess.run(["bash", "-c", 'while read -t 0.1 -N 100 a; do true; done'])
-            time.sleep(1)
+            now_monotonic = time.monotonic()
+            if now_monotonic - last_seen < 60:
+                time.sleep(0.3)
+            elif now_monotonic - last_seen < 600:
+                time.sleep(1)
+            else:
+                time.sleep(2)
             clear_stdin()
             continue
+        last_seen = time.monotonic()
         if ln and ln[-1] == '\n':
             ln = ln[:-1]
         ln = unescape(ln)
