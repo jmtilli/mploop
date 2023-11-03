@@ -167,6 +167,9 @@ def unescape(x):
             res.write(ch)
     return res.getvalue()
 
+mainlck = os.open(os.path.expanduser('~') + '/.mploop/.mainlock', os.O_RDWR | os.O_CREAT, 0o777)
+fcntl.flock(mainlck, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
 while True:
     lck =  os.open(os.path.expanduser('~') + '/.mploop/db.txt', os.O_RDWR | os.O_CREAT, 0o777)
     fcntl.flock(lck, fcntl.LOCK_EX)
