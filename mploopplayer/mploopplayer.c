@@ -821,7 +821,7 @@ int main(int argc, char **argv)
 			ret = avcodec_send_packet(adecctx, packet);
 			if (first) {
 				av_log_set_level(AV_LOG_INFO);
-				first = 0;
+				//first = 0; // Ugh, occurs at end too
 			}
 			if (ret < 0) {
 				fprintf(stderr, "Cannot send packet to AV codec, probably corrupted file\n");
