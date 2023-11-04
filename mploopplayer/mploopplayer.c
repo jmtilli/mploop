@@ -213,12 +213,12 @@ void print_status(const char *fmt, ...)
 	va_start(ap, fmt);
 	vsnprintf(buf, len+1, fmt, ap);
 	va_end(ap);
-	for (i = 0; i < max_len; i++)
+	printf("%s", buf);
+	for (i = 0; i < max_len - len; i++)
 	{
 		putchar(' ');
 	}
 	putchar('\r');
-	printf("%s\r", buf);
 	free(buf);
 }
 
