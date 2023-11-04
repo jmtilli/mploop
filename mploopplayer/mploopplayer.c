@@ -31,6 +31,8 @@ float duration;
 int audio_format_as_sdl = -12345;
 char volfilebuf[PATH_MAX+1];
 const char *volfile = NULL;
+AVFormatContext *avfctx = NULL;
+int aidx;
 
 void handler_impl(void)
 {
@@ -280,7 +282,7 @@ void output_audio_frame(AVFrame *frame)
 	size_t unpadded_linesize = frame->nb_samples * av_get_bytes_per_sample(frame->format);
 #endif
 	pts = frame->pts;
-	float mytime = ((float)frame->pts) * ((float)adecctx->time_base.num) / (float)adecctx->time_base.den;
+	float mytime = ((float)frame->pts) * ((float)avfctx->streams[aidx]->time_base.num) / (float)avfctx->streams[aidx]->time_base.den;
 	print_status("[V: %.1f] A: %.1f / %.1f", volume_db, mytime, duration);
 	fflush(stdout);
 	bufloc = 0;
@@ -504,10 +506,8 @@ void usage(const char *argv0)
 
 int main(int argc, char **argv)
 {
-	int aidx;
 	int ret;
 	const AVCodec *dec;
-	AVFormatContext *avfctx = NULL;
 	AVFrame *frame = NULL;
 	AVPacket *packet = NULL;
 	int opt;
@@ -841,7 +841,7 @@ int main(int argc, char **argv)
 		}
 		av_packet_unref(packet);
 		if (seeks != 0) {
-			int64_t ts = pts + seeks*adecctx->time_base.den/adecctx->time_base.num;
+			int64_t ts = pts + seeks*avfctx->streams[aidx]->time_base.den/avfctx->streams[aidx]->time_base.num;
 			if (ts < 0) {
 				ts = 0;
 			}
