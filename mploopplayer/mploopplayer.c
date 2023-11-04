@@ -29,6 +29,8 @@ int bufloc;
 int nonplanar = 0;
 float duration;
 int audio_format_as_sdl = -12345;
+char volfilebuf[PATH_MAX+1];
+const char *volfile = NULL;
 
 void handler_impl(void)
 {
@@ -221,6 +223,8 @@ void print_status(const char *fmt, ...)
 int seeks = 0;
 int64_t pts = 0;
 
+float volume_db = 0.0;
+float gain_db = 0.0;
 float volume_mul = 1.0;
 
 static inline float for_every_sample(float x)
@@ -277,7 +281,7 @@ void output_audio_frame(AVFrame *frame)
 #endif
 	pts = frame->pts;
 	float mytime = ((float)frame->pts) * ((float)adecctx->time_base.num) / (float)adecctx->time_base.den;
-	print_status("A: %.1f / %.1f", mytime, duration);
+	print_status("[V: %.1f] A: %.1f / %.1f", volume_db, mytime, duration);
 	fflush(stdout);
 	bufloc = 0;
 	for (i = 0; i < frame->nb_samples; i++) {
@@ -432,6 +436,26 @@ void output_audio_frame(AVFrame *frame)
 					seeks -= 600;
 					//printf("\n\nPGDOWN\n\n");
 				}
+				if (ch == '/') {
+					FILE *f;
+					volume_db -= 1;
+					volume_mul = powf(10.0, (gain_db+volume_db)/20.0);
+					f = fopen(volfile, "w");
+					if (f) {
+						fprintf(f, "%f\n", volume_db);
+						fclose(f);
+					}
+				}
+				if (ch == '*') {
+					FILE *f;
+					volume_db += 1;
+					volume_mul = powf(10.0, (gain_db+volume_db)/20.0);
+					f = fopen(volfile, "w");
+					if (f) {
+						fprintf(f, "%f\n", volume_db);
+						fclose(f);
+					}
+				}
 				if (ch == ' ') {
 					for (;;) {
 						struct pollfd pfd = {};
@@ -487,10 +511,10 @@ int main(int argc, char **argv)
 	AVFrame *frame = NULL;
 	AVPacket *packet = NULL;
 	int opt;
-	float gain_db;
 	char *endptr;
 	size_t fnamebuflen;
 	char *fnamebuf;
+	const char *homedir;
 #if 0
 	AVStream *audio_stream;
 #endif
@@ -506,11 +530,28 @@ int main(int argc, char **argv)
 				if (*optarg == '\0' || *endptr != '\0') {
 					usage(argv[0]);
 				}
-				volume_mul = powf(10.0, gain_db/20.0);
+				volume_mul = powf(10.0, (gain_db+volume_db)/20.0);
 				break;
 			default: // '?'
 				usage(argv[0]);
 				break;
+		}
+	}
+	homedir = getenv("HOME");
+	if (homedir && *homedir != '\0') {
+		if (snprintf(volfilebuf, sizeof(volfilebuf), "%s/.mploop/vol.txt", homedir) < (int)sizeof(volfilebuf)) {
+			FILE *f;
+			volfile = volfilebuf;
+			f = fopen(volfile, "r");
+			if (f) {
+				char volline[256];
+				if (fgets(volline, (int)sizeof(volline), f))
+				{
+					volume_db = strtof(volline, &endptr);
+					volume_mul = powf(10.0, (gain_db+volume_db)/20.0);
+				}
+				fclose(f);
+			}
 		}
 	}
 	if (argc != optind + 1) {
