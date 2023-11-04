@@ -24,6 +24,7 @@ if not os.access(mploopplayer, os.X_OK):
 # - mp3gain
 # - metaflac
 # - vorbiscomment
+# - opustags
 
 def clear_stdin():
     old_settings = termios.tcgetattr(sys.stdin)
@@ -259,6 +260,7 @@ def get_gain(ln):
     trackgain_db = 0.0
     albumgain_db = None
     comments = []
+    is_opus = False
     if mimetype != "" and mimetype[-1] == "\n":
         mimetype = mimetype[:-1]
     if mimetype == "audio/flac":
@@ -267,7 +269,15 @@ def get_gain(ln):
         return get_mp3_gain(ln)
     elif mimetype == "audio/ogg":
         try:
-            out = subprocess.run(["vorbiscomment", "--", ln], capture_output=True).stdout.decode("utf-8").split("\n")
+            out = ""
+            try:
+                out = subprocess.run(["opustags", "--", ln], capture_output=True).stdout.decode("utf-8").split("\n")
+                if out != [""]:
+                    is_opus = True
+            except FileNotFoundError:
+                pass
+            if out == [""]:
+                out = subprocess.run(["vorbiscomment", "--", ln], capture_output=True).stdout.decode("utf-8").split("\n")
         except FileNotFoundError:
             return (0.0, [])
         for out1 in out:
