@@ -230,7 +230,7 @@ def get_flac_gain(ln):
                 k,v = cval.split("=", 1)
                 if k == "R128_TRACK_GAIN":
                     try:
-                        r128gain_db = float(v[:-3])/256.0 + offset
+                        r128gain_db = float(v)/256.0 + offset
                     except:
                         pass
                 elif k == "REPLAYGAIN_REFERENCE_LOUDNESS":
@@ -297,7 +297,7 @@ def get_gain(ln):
             k,v = out1.split("=", 1)
             if k == "R128_TRACK_GAIN":
                 try:
-                    r128gain_db = float(v[:-3])/256.0 + offset
+                    r128gain_db = float(v)/256.0 + offset
                 except:
                     pass
             elif k == "REPLAYGAIN_REFERENCE_LOUDNESS":
