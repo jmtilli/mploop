@@ -24,7 +24,7 @@ if not os.access(mploopplayer, os.X_OK):
 # - mp3gain
 # - metaflac
 # - vorbiscomment
-# - opustags
+# - opusinfo or opustags
 
 def clear_stdin():
     old_settings = termios.tcgetattr(sys.stdin)
@@ -261,6 +261,31 @@ def get_flac_gain(ln):
         return (albumgain_db + (magic_ref - ref), comments)
     return (trackgain_db + (magic_ref - ref), comments)
 
+def get_opusinfo(ln):
+    is_opus = False
+    result = []
+    found = False
+    try:
+        out = subprocess.run(["opusinfo", "--", ln], capture_output=True).stdout.decode("utf-8").split("\n")
+        for out1 in out:
+            if out1 == "User comments section follows...":
+                found = True
+                is_opus = True
+                continue
+            if out1[:12] == "Opus stream ":
+                is_opus = True
+            if not found:
+                continue
+            if out1[0] == "\t":
+                result.append(out1[1:])
+            else:
+                found = False
+        if result == []:
+            return (is_opus, [""])
+        return (is_opus, result)
+    except FileNotFoundError:
+        return (None, [""])
+
 def get_gain(ln):
     mimetype=subprocess.run(["file", "-b", "--mime-type", "--", ln], capture_output=True).stdout.decode("us-ascii")
     r128gain_db = None
@@ -278,11 +303,14 @@ def get_gain(ln):
         return get_mp3_gain(ln)
     elif mimetype == "audio/ogg":
         try:
-            out = ""
+            out = [""]
+            is_opus, out = get_opusinfo(ln)
             try:
-                out = subprocess.run(["opustags", "--", ln], capture_output=True).stdout.decode("utf-8").split("\n")
-                if out != [""]:
-                    is_opus = True
+                if is_opus == None:
+                    is_opus = False
+                    out = subprocess.run(["opustags", "--", ln], capture_output=True).stdout.decode("utf-8").split("\n")
+                    if out != [""]:
+                        is_opus = True
             except FileNotFoundError:
                 pass
             if out == [""]:
