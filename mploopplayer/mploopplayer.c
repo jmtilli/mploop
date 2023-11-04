@@ -498,6 +498,27 @@ void output_audio_frame(AVFrame *frame)
 	}
 }
 
+void log_cb(void *avcl, int level, const char *fmt, va_list ap)
+{
+	char *linebuf = NULL;
+	int print_prefix = 1;
+	const size_t linesize = 16384;
+	if (level > av_log_get_level())
+	{
+		return;
+	}
+	linebuf = malloc(linesize);
+	if (linebuf == NULL)
+	{
+		fprintf(stderr, "Out of memory\n");
+		handler_impl();
+		exit(1);
+	}
+	av_log_format_line(avcl, level, fmt, ap, linebuf, linesize, &print_prefix);
+	fprintf(stderr, "%s", linebuf);
+	free(linebuf);
+}
+
 void usage(const char *argv0)
 {
 	fprintf(stderr, "Usage: %s [-g gain_db] file.ogg\n", argv0);
@@ -573,6 +594,7 @@ int main(int argc, char **argv)
 	snprintf(fnamebuf, fnamebuflen, "file:%s", argv[optind]);
 
 	SDL_Init(SDL_INIT_AUDIO);
+	av_log_set_callback(log_cb);
 
 	av_log_set_level(AV_LOG_WARNING); // Avoid opus message from ogg: "693 bytes of comment header remain"
 	if (avformat_open_input(&avfctx, fnamebuf, NULL, NULL) < 0) {
