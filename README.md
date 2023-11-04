@@ -2,8 +2,8 @@
 
 MPloop is a set of scripts for playing music in the background. The idea is
 that the "loop" part, which is a script that reads the queue and plays songs in
-that order, is started in a screen or tmux session. The "loop" uses MPlayer as
-the tool for playing music.
+that order, is started in a screen or tmux session. The "loop" uses MPlayer or
+a custom included music player as the tool for playing music.
 
 All of the songs are played from queue in the order they are in the queue.
 
