@@ -211,6 +211,7 @@ def get_flac_gain(ln):
     mimetype=subprocess.run(["file", "-b", "--mime-type", "--", ln], capture_output=True).stdout.decode("us-ascii")
     magic_ref = 89.0
     ref = 89.0
+    r128gain_db = None
     trackgain_db = 0.0
     albumgain_db = None
     comments = []
@@ -227,7 +228,12 @@ def get_flac_gain(ln):
                 if "=" not in cval:
                     continue
                 k,v = cval.split("=", 1)
-                if k == "REPLAYGAIN_REFERENCE_LOUDNESS":
+                if k == "R128_TRACK_GAIN":
+                    try:
+                        r128gain_db = float(v[:-3])/256.0 + offset
+                    except:
+                        pass
+                elif k == "REPLAYGAIN_REFERENCE_LOUDNESS":
                     if v[-3:] == " dB":
                         try:
                             ref = float(v[:-3])
@@ -249,12 +255,15 @@ def get_flac_gain(ln):
                     pass
                 else:
                     comments.append((k,v))
+    if r128gain_db != None:
+        return (r128gain_db, comments)
     if albumgain_db != None:
         return (albumgain_db + (magic_ref - ref), comments)
     return (trackgain_db + (magic_ref - ref), comments)
 
 def get_gain(ln):
     mimetype=subprocess.run(["file", "-b", "--mime-type", "--", ln], capture_output=True).stdout.decode("us-ascii")
+    r128gain_db = None
     magic_ref = 89.0
     ref = 89.0
     trackgain_db = 0.0
@@ -286,7 +295,12 @@ def get_gain(ln):
             if "=" not in out1:
                 continue
             k,v = out1.split("=", 1)
-            if k == "REPLAYGAIN_REFERENCE_LOUDNESS":
+            if k == "R128_TRACK_GAIN":
+                try:
+                    r128gain_db = float(v[:-3])/256.0 + offset
+                except:
+                    pass
+            elif k == "REPLAYGAIN_REFERENCE_LOUDNESS":
                 if v[-3:] == " dB":
                     try:
                         ref = float(v[:-3])
@@ -308,6 +322,8 @@ def get_gain(ln):
                 pass
             else:
                 comments.append((k,v))
+    if r128gain_db != None:
+        return (r128gain_db, comments)
     if albumgain_db != None:
         return (albumgain_db + (magic_ref - ref), comments)
     return (trackgain_db + (magic_ref - ref), comments)
