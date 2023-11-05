@@ -481,5 +481,6 @@ try:
             subprocess.run(["mplayer", "-novideo", "-nolirc", "-msglevel", "all=0:statusline=5:cplayer=5", "-af", "volume=" + str(gain-offset2) + ":1", "--", ln])
         print("")
 except KeyboardInterrupt:
+    with open(npexpanded, "w") as f:
+        f.write('')
     print("")
-    pass
