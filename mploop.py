@@ -401,9 +401,16 @@ fcntl.flock(mainlck, fcntl.LOCK_EX | fcntl.LOCK_NB)
 last_seen = time.monotonic()
 
 expanded = os.path.expanduser('~') + '/.mploop/db.txt'
+npexpanded = os.path.expanduser('~') + '/.mploop/np.txt'
+
+toclear = True
 
 while True:
     if os.stat(expanded).st_size == 0:
+        if toclear:
+            with open(npexpanded, "w") as f:
+                f.write('')
+            toclear = False
         # Remove console input
         #subprocess.run(["bash", "-c", 'while read -t 0.1 -N 100 a; do true; done'])
         now_monotonic = time.monotonic()
@@ -421,6 +428,10 @@ while True:
         ln = f.readline()
         if ln == '':
             os.close(lck)
+            if toclear:
+                with open(npexpanded, "w") as f:
+                    f.write('')
+                toclear = False
             # Remove console input
             #subprocess.run(["bash", "-c", 'while read -t 0.1 -N 100 a; do true; done'])
             now_monotonic = time.monotonic()
@@ -461,6 +472,7 @@ while True:
         print(pretty + ' ' + v)
     with open(os.path.expanduser('~') + '/.mploop/np.txt', "w") as f:
         f.write("FILE=" + rawln + '\n' + '\n'.join(c[0] + "=" + c[1] for c in comments) + '\n')
+    toclear=True
     print(80*"-")
     if mploopplayer:
         subprocess.run([mploopplayer, "-g", str(gain-offset2-mploopplayer_extraoffset), "--", ln])
