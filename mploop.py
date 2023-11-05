@@ -405,29 +405,9 @@ npexpanded = os.path.expanduser('~') + '/.mploop/np.txt'
 
 toclear = True
 
-while True:
-    if os.stat(expanded).st_size == 0:
-        if toclear:
-            with open(npexpanded, "w") as f:
-                f.write('')
-            toclear = False
-        # Remove console input
-        #subprocess.run(["bash", "-c", 'while read -t 0.1 -N 100 a; do true; done'])
-        now_monotonic = time.monotonic()
-        if now_monotonic - last_seen < 60:
-            time.sleep(0.3)
-        elif now_monotonic - last_seen < 600:
-            time.sleep(1)
-        else:
-            time.sleep(2)
-        continue
-    expanded = os.path.expanduser('~') + '/.mploop/db.txt'
-    lck =  os.open(expanded, os.O_RDWR | os.O_CREAT, 0o777)
-    fcntl.flock(lck, fcntl.LOCK_EX)
-    with open(expanded, 'r') as f:
-        ln = f.readline()
-        if ln == '':
-            os.close(lck)
+try:
+    while True:
+        if os.stat(expanded).st_size == 0:
             if toclear:
                 with open(npexpanded, "w") as f:
                     f.write('')
@@ -442,40 +422,64 @@ while True:
             else:
                 time.sleep(2)
             continue
-        last_seen = time.monotonic()
-        if ln and ln[-1] == '\n':
-            ln = ln[:-1]
-        rawln = ln
-        ln = unescape(ln)
-        rest = ''.join(f.readlines())
-    with open(expanded, "w") as f:
-        f.write(rest)
-    os.close(lck)
-    gain,comments = get_gain(ln)
-    if clear_stdin():
-        print("")
-    print(80*"=")
-    print("Applying gain:", gain-offset2)
-    print("File:", ln)
-    for comment in comments:
-        k = comment[0]
-        pretty = k
-        if k == 'TRACKNUMBER':
-            pretty = 'Track number:'
-        elif k == 'COPYRIGHT':
-            pretty = 'Copyright'
-        elif k == '':
-            pretty = 'Comment:'
+        expanded = os.path.expanduser('~') + '/.mploop/db.txt'
+        lck =  os.open(expanded, os.O_RDWR | os.O_CREAT, 0o777)
+        fcntl.flock(lck, fcntl.LOCK_EX)
+        with open(expanded, 'r') as f:
+            ln = f.readline()
+            if ln == '':
+                os.close(lck)
+                if toclear:
+                    with open(npexpanded, "w") as f:
+                        f.write('')
+                    toclear = False
+                # Remove console input
+                #subprocess.run(["bash", "-c", 'while read -t 0.1 -N 100 a; do true; done'])
+                now_monotonic = time.monotonic()
+                if now_monotonic - last_seen < 60:
+                    time.sleep(0.3)
+                elif now_monotonic - last_seen < 600:
+                    time.sleep(1)
+                else:
+                    time.sleep(2)
+                continue
+            last_seen = time.monotonic()
+            if ln and ln[-1] == '\n':
+                ln = ln[:-1]
+            rawln = ln
+            ln = unescape(ln)
+            rest = ''.join(f.readlines())
+        with open(expanded, "w") as f:
+            f.write(rest)
+        os.close(lck)
+        gain,comments = get_gain(ln)
+        if clear_stdin():
+            print("")
+        print(80*"=")
+        print("Applying gain:", gain-offset2)
+        print("File:", ln)
+        for comment in comments:
+            k = comment[0]
+            pretty = k
+            if k == 'TRACKNUMBER':
+                pretty = 'Track number:'
+            elif k == 'COPYRIGHT':
+                pretty = 'Copyright'
+            elif k == '':
+                pretty = 'Comment:'
+            else:
+                pretty = k[0:1].upper() + k[1:].lower() + ':'
+            v = comment[1]
+            print(pretty + ' ' + v)
+        with open(os.path.expanduser('~') + '/.mploop/np.txt', "w") as f:
+            f.write("FILE=" + rawln + '\n' + '\n'.join(c[0] + "=" + c[1] for c in comments) + '\n')
+        toclear=True
+        print(80*"-")
+        if mploopplayer:
+            subprocess.run([mploopplayer, "-g", str(gain-offset2-mploopplayer_extraoffset), "--", ln])
         else:
-            pretty = k[0:1].upper() + k[1:].lower() + ':'
-        v = comment[1]
-        print(pretty + ' ' + v)
-    with open(os.path.expanduser('~') + '/.mploop/np.txt', "w") as f:
-        f.write("FILE=" + rawln + '\n' + '\n'.join(c[0] + "=" + c[1] for c in comments) + '\n')
-    toclear=True
-    print(80*"-")
-    if mploopplayer:
-        subprocess.run([mploopplayer, "-g", str(gain-offset2-mploopplayer_extraoffset), "--", ln])
-    else:
-        subprocess.run(["mplayer", "-novideo", "-nolirc", "-msglevel", "all=0:statusline=5:cplayer=5", "-af", "volume=" + str(gain-offset2) + ":1", "--", ln])
+            subprocess.run(["mplayer", "-novideo", "-nolirc", "-msglevel", "all=0:statusline=5:cplayer=5", "-af", "volume=" + str(gain-offset2) + ":1", "--", ln])
+        print("")
+except KeyboardInterrupt:
     print("")
+    pass
