@@ -18,6 +18,52 @@ The scripts are:
 * mpshuffle for shuffling the entire queue
 * vimp for more complex editing of the queue, such as targeted order changes
 
+## Supported file formats
+
+There are two implementations of the actual software that plays music. One is
+using MPlayer that offers a very wide variety of file formats. A second one is
+MPloop's custom music player. It is based on libavformat and libavcodec, so a
+file format that is supported by MPlayer but not by libavformat and/or
+libavcodec does not work then. However, in practice most of MPlayer's format
+support happens via libavformat and libavcodec, so the format support is good
+no matter which implementation is used.
+
+However, metadata support for different formats is more limited. ReplayGain is
+supported for only Ogg Vorbis, Opus, FLAC and MP3. Also comment tags are
+supported for the same formats, and MP3 ID3 tags are automatically converted to
+Vorbis comments.
+
+## Philosophy
+
+MPloop has a certain philosophy behind it. Because music is not visual, playing
+music should not require any X or Wayland server, but rather occur from command
+line. MPloop is intended to be used in a screen or tmux session so that if it
+is controlled via X or Wayland server, it can survive a logout, and if it is
+controlled via SSH, it can survive a network connection failure.
+
+MPloop is not a daemon. It prints status information, such as information on
+the song being played, and a running status line, to stdout. It also takes
+input from stdin, allowing seeking via cursor keys (left: minus 10 sec, right:
+plus 10 sec, down: minus 60 sec, up: plus 60 sec, page down: minus 600 sec,
+page up: plus 600 sec). It can also be paused and resumed by pressing space bar
+or the `p` key. The current song can be skipped by pressing enter or the `q`
+key. Volume can be adjusted using `9` and `0` or `/` and `*`. These keyboard
+shortcuts are inherited from MPlayer, but also work for the custom player
+included in MPloop currently.
+
+MPloop does not want to know where your music is stored. Maybe you have a
+number of directories on different hard disk drives that each contain part of
+your music library. You don't need to organize your music in a tidy manner.
+MPloop can play music from any directory, and it doesn't want to scan your
+entire music library. This is where it differs from MPD (music player daemon).
+
+MPloop has been designed in such a manner that you use the Unix command line to
+control it. Want to find some song? Just use `find Music | grep -i
+name.of.song`. Want to play an entire album in shuffled order? Just use `cd
+albumdirectory; mpq -s *.ogg`. The Unix shell is an exceptionally capable tool
+of working with files, and creating some interface that is isolated from Unix
+shell just for playing music would be a major crime.
+
 ## Requirements
 
 MPloop requires either MPlayer or the custom included music player,
