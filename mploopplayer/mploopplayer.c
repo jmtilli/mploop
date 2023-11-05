@@ -498,10 +498,11 @@ void output_audio_frame(AVFrame *frame)
 	}
 }
 
+int print_prefix = 1;
+
 void log_cb(void *avcl, int level, const char *fmt, va_list ap)
 {
 	char *linebuf = NULL;
-	int print_prefix = 1;
 	const size_t linesize = 16384;
 	if (level > av_log_get_level())
 	{
