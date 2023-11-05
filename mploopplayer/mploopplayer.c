@@ -583,6 +583,11 @@ void log_cb(void *avcl, int level, const char *fmt, va_list ap)
 					free(rawlinebuf);
 					return;
 				}
+				if (strcmp(rawlinebuf, "Could not update timestamps for discarded samples.\n") == 0) {
+					free(linebuf);
+					free(rawlinebuf);
+					return;
+				}
 			}
 		}
 	}
