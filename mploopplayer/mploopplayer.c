@@ -438,7 +438,7 @@ void output_audio_frame(AVFrame *frame)
 					seeks -= 600;
 					//printf("\n\nPGDOWN\n\n");
 				}
-				if (ch == '/') {
+				if (ch == '/' || ch == '9') {
 					FILE *f;
 					volume_db -= 1;
 					volume_mul = powf(10.0, (gain_db+volume_db)/20.0);
@@ -448,7 +448,7 @@ void output_audio_frame(AVFrame *frame)
 						fclose(f);
 					}
 				}
-				if (ch == '*') {
+				if (ch == '*' || ch == '0') {
 					FILE *f;
 					volume_db += 1;
 					volume_mul = powf(10.0, (gain_db+volume_db)/20.0);
@@ -458,7 +458,7 @@ void output_audio_frame(AVFrame *frame)
 						fclose(f);
 					}
 				}
-				if (ch == ' ') {
+				if (ch == ' ' || ch == 'p') {
 					for (;;) {
 						struct pollfd pfd = {};
 						pfd.fd = 0;
@@ -473,7 +473,7 @@ void output_audio_frame(AVFrame *frame)
 							handler_impl();
 							exit(0);
 						}
-						if (ch == ' ') {
+						if (ch == ' ' || ch == 'p') {
 							break;
 						}
 					}
