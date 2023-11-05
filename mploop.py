@@ -399,7 +399,7 @@ def unescape(x):
             res.write(ch)
     return res.getvalue()
 
-mainlck = os.open(os.path.expanduser('~') + '/.mploop/.mainlock', os.O_RDWR | os.O_CREAT, 0o777)
+mainlck = os.open(os.path.expanduser('~') + '/.mploop/.mainlock', os.O_RDWR | os.O_CREAT, 0o666)
 fcntl.flock(mainlck, fcntl.LOCK_EX | fcntl.LOCK_NB)
 
 last_seen = time.monotonic()
