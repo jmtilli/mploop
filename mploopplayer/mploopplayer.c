@@ -514,28 +514,24 @@ enum avoid_state avoid_state = AVOID_NONE;
 
 void log_cb(void *avcl, int level, const char *fmt, va_list ap)
 {
+	char *rawlinebuf = NULL;
+	int rawlinesize;
 	char *linebuf = NULL;
 	int linesize;
 	struct AVClassContainer *container = (struct AVClassContainer*)avcl;
-	if (container) {
-		struct AVClass *class = container->class;
-		if (class && class->item_name) {
-			const char *item_name = class->item_name(container);
-			if (strcmp(item_name, "ogg") == 0 && avoid_state == AVOID_OGG_MSG && level == AV_LOG_INFO)
-			{
-				return;
-			}
-			if (strcmp(item_name, "opus") == 0 && avoid_state == AVOID_OPUS_MSG && level == AV_LOG_WARNING)
-			{
-				return;
-			}
-		}
-	}
+	va_list ap2;
+	va_list ap3;
+	va_list ap4;
 	if (level > av_log_get_level())
 	{
 		return;
 	}
-	linesize = av_log_format_line2(avcl, level, fmt, ap, NULL, 0, &print_prefix);
+	va_copy(ap2, ap);
+	va_copy(ap3, ap);
+	va_copy(ap4, ap);
+	rawlinesize = vsnprintf(NULL, 0, fmt, ap);
+	linesize = av_log_format_line2(avcl, level, fmt, ap2, NULL, 0, &print_prefix);
+	va_end(ap2);
 	if (linesize < 0) {
 		fprintf(stderr, "Error when logging\n");
 		handler_impl();
@@ -548,13 +544,51 @@ void log_cb(void *avcl, int level, const char *fmt, va_list ap)
 		handler_impl();
 		exit(1);
 	}
-	if (av_log_format_line2(avcl, level, fmt, ap, linebuf, linesize+1, &print_prefix) < 0) {
+	rawlinebuf = malloc(rawlinesize+1);
+	if (rawlinebuf == NULL)
+	{
+		fprintf(stderr, "Out of memory\n");
+		handler_impl();
+		exit(1);
+	}
+	if (av_log_format_line2(avcl, level, fmt, ap3, linebuf, linesize+1, &print_prefix) < 0) {
 		fprintf(stderr, "Error when logging\n");
 		handler_impl();
 		exit(1);
 	}
+	va_end(ap3);
+	if (vsnprintf(rawlinebuf, rawlinesize+1, fmt, ap4) < 0) {
+		fprintf(stderr, "Error when logging\n");
+		handler_impl();
+		exit(1);
+	}
+	va_end(ap4);
+	if (container) {
+		struct AVClass *class = container->class;
+		if (class && class->item_name) {
+			const char *item_name = class->item_name(container);
+			const char *ogg_suffix = " bytes of comment header remain\n";
+			if (strcmp(item_name, "ogg") == 0 && avoid_state == AVOID_OGG_MSG && level == AV_LOG_INFO)
+			{
+				if (strcmp(rawlinebuf+strlen(rawlinebuf)-strlen(ogg_suffix), ogg_suffix) == 0) {
+					free(linebuf);
+					free(rawlinebuf);
+					return;
+				}
+			}
+			if (strcmp(item_name, "opus") == 0 && avoid_state == AVOID_OPUS_MSG && level == AV_LOG_WARNING)
+			{
+				if (strcmp(rawlinebuf, "Could not update timestamps for skipped samples.\n") == 0) {
+					free(linebuf);
+					free(rawlinebuf);
+					return;
+				}
+			}
+		}
+	}
 	fprintf(stderr, "%s", linebuf);
 	free(linebuf);
+	free(rawlinebuf);
 }
 
 void usage(const char *argv0)
