@@ -570,7 +570,7 @@ void log_cb(void *avcl, int level, const char *fmt, va_list ap)
 			const char *ogg_suffix = " bytes of comment header remain\n";
 			if (strcmp(item_name, "ogg") == 0 && avoid_state == AVOID_OGG_MSG && level == AV_LOG_INFO)
 			{
-				if (strcmp(rawlinebuf+strlen(rawlinebuf)-strlen(ogg_suffix), ogg_suffix) == 0) {
+				if (strlen(rawlinebuf) > strlen(ogg_suffix) && strcmp(rawlinebuf+strlen(rawlinebuf)-strlen(ogg_suffix), ogg_suffix) == 0) {
 					free(linebuf);
 					free(rawlinebuf);
 					return;
