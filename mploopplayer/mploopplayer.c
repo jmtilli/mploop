@@ -503,19 +503,29 @@ int print_prefix = 1;
 void log_cb(void *avcl, int level, const char *fmt, va_list ap)
 {
 	char *linebuf = NULL;
-	const size_t linesize = 16384;
+	int linesize;
 	if (level > av_log_get_level())
 	{
 		return;
 	}
-	linebuf = malloc(linesize);
+	linesize = av_log_format_line2(avcl, level, fmt, ap, NULL, 0, &print_prefix);
+	if (linesize < 0) {
+		fprintf(stderr, "Error when logging\n");
+		handler_impl();
+		exit(1);
+	}
+	linebuf = malloc(linesize+1);
 	if (linebuf == NULL)
 	{
 		fprintf(stderr, "Out of memory\n");
 		handler_impl();
 		exit(1);
 	}
-	av_log_format_line(avcl, level, fmt, ap, linebuf, linesize, &print_prefix);
+	if (av_log_format_line2(avcl, level, fmt, ap, linebuf, linesize+1, &print_prefix) < 0) {
+		fprintf(stderr, "Error when logging\n");
+		handler_impl();
+		exit(1);
+	}
 	fprintf(stderr, "%s", linebuf);
 	free(linebuf);
 }
