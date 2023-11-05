@@ -858,8 +858,8 @@ int main(int argc, char **argv)
 	desired.callback = NULL;
 	desired.userdata = NULL;
 	//const char *name = SDL_GetAudioDeviceName(1,0);
-	const char *name = SDL_GetAudioDeviceName(0,0);
-	//name = NULL;
+	//const char *name = SDL_GetAudioDeviceName(0,0);
+	const char *name = NULL;
 	audid = SDL_OpenAudioDevice(name, 0, &desired, &obtained, SDL_AUDIO_ALLOW_ANY_CHANGE);
 	if (audid <= 0) {
 		fprintf(stderr, "Cannot open SDL audio\n");
