@@ -500,10 +500,37 @@ void output_audio_frame(AVFrame *frame)
 
 int print_prefix = 1;
 
+struct AVClassContainer {
+	struct AVClass *class;
+};
+
+enum avoid_state {
+	AVOID_NONE,
+	AVOID_OGG_MSG,
+	AVOID_OPUS_MSG,
+};
+
+enum avoid_state avoid_state = AVOID_NONE;
+
 void log_cb(void *avcl, int level, const char *fmt, va_list ap)
 {
 	char *linebuf = NULL;
 	int linesize;
+	struct AVClassContainer *container = (struct AVClassContainer*)avcl;
+	if (container) {
+		struct AVClass *class = container->class;
+		if (class && class->item_name) {
+			const char *item_name = class->item_name(container);
+			if (strcmp(item_name, "ogg") == 0 && avoid_state == AVOID_OGG_MSG && level == AV_LOG_INFO)
+			{
+				return;
+			}
+			if (strcmp(item_name, "opus") == 0 && avoid_state == AVOID_OPUS_MSG && level == AV_LOG_WARNING)
+			{
+				return;
+			}
+		}
+	}
 	if (level > av_log_get_level())
 	{
 		return;
@@ -607,13 +634,13 @@ int main(int argc, char **argv)
 	SDL_Init(SDL_INIT_AUDIO);
 	av_log_set_callback(log_cb);
 
-	av_log_set_level(AV_LOG_WARNING); // Avoid opus message from ogg: "693 bytes of comment header remain"
+	avoid_state = AVOID_OGG_MSG; // Avoid opus message from ogg: "693 bytes of comment header remain"
 	if (avformat_open_input(&avfctx, fnamebuf, NULL, NULL) < 0) {
 		fprintf(stderr, "File %s is probably not an audio file, can't open it\n", argv[optind]);
 		handler_impl();
 		exit(1);
 	}
-	av_log_set_level(AV_LOG_INFO);
+	avoid_state = AVOID_NONE;
 	if (avformat_find_stream_info(avfctx, NULL) < 0) {
 		fprintf(stderr, "File %s is probably not an audio file, can't find stream info\n", argv[optind]);
 		handler_impl();
@@ -849,11 +876,11 @@ int main(int argc, char **argv)
 	while (av_read_frame(avfctx, packet) >= 0) {
 		if (packet->stream_index == aidx) {
 			if (first) {
-				av_log_set_level(AV_LOG_ERROR); // Avoid opus message "Could not update timestamps for skipped samples."
+				avoid_state = AVOID_OPUS_MSG; // Avoid opus message "Could not update timestamps for skipped samples."
 			}
 			ret = avcodec_send_packet(adecctx, packet);
 			if (first) {
-				av_log_set_level(AV_LOG_INFO);
+				avoid_state = AVOID_NONE;
 				//first = 0; // Ugh, occurs at end too
 			}
 			if (ret < 0) {
