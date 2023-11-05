@@ -9,6 +9,9 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+os.makedirs(os.path.expanduser('~') + '/.mploop', exist_ok = True)
+Path(os.path.expanduser('~') + '/.mploop/db.txt').touch()
+
 if len(sys.argv) != 1:
     print("Usage: vimp")
     sys.exit(1)

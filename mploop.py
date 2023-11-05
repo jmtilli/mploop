@@ -10,6 +10,10 @@ import termios
 import select
 import fcntl
 import errno
+from pathlib import Path
+
+os.makedirs(os.path.expanduser('~') + '/.mploop', exist_ok = True)
+Path(os.path.expanduser('~') + '/.mploop/db.txt').touch()
 
 mploopplayer = os.path.dirname(os.path.realpath(sys.argv[0])) + '/mploopplayer/mploopplayer'
 if not os.access(mploopplayer, os.X_OK):

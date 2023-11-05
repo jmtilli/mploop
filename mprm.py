@@ -7,6 +7,9 @@ import sys
 import subprocess
 from pathlib import Path
 
+os.makedirs(os.path.expanduser('~') + '/.mploop', exist_ok = True)
+Path(os.path.expanduser('~') + '/.mploop/db.txt').touch()
+
 def escape(x):
     return x.replace("\\", "\\\\").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
 
