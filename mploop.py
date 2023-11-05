@@ -434,6 +434,7 @@ while True:
         last_seen = time.monotonic()
         if ln and ln[-1] == '\n':
             ln = ln[:-1]
+        rawln = ln
         ln = unescape(ln)
         rest = ''.join(f.readlines())
     with open(expanded, "w") as f:
@@ -458,6 +459,8 @@ while True:
             pretty = k[0:1].upper() + k[1:].lower() + ':'
         v = comment[1]
         print(pretty + ' ' + v)
+    with open(os.path.expanduser('~') + '/.mploop/np.txt', "w") as f:
+        f.write("FILE=" + rawln + '\n' + '\n'.join(c[0] + "=" + c[1] for c in comments) + '\n')
     print(80*"-")
     if mploopplayer:
         subprocess.run([mploopplayer, "-g", str(gain-offset2-mploopplayer_extraoffset), "--", ln])
