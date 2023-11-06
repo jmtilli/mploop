@@ -11,6 +11,9 @@
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <sys/time.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <time.h>
 #include <unistd.h>
 #include <poll.h>
@@ -82,113 +85,172 @@ int64_t gettime64(void)
 	return ((int64_t)tv.tv_sec)*1000*1000 + (int64_t)(tv.tv_usec);
 }
 
-int64_t escape_time64 = 0;
-char escapebuf[16];
-int escapebufsize = 0;
+struct escape {
+	int64_t escape_time64;
+	char escapebuf[16];
+	int escapebufsize;
+};
+
+struct escape *escapes;
+struct pollfd *pfds;
+size_t pfds_size;
+size_t pfds_capacity;
+
+void pfds_add(int fd) {
+	struct escape *escapes_new;
+	struct pollfd *pfds_new;
+	if (pfds_size >= pfds_capacity) {
+		pfds_capacity = 2*pfds_size + 16;
+		pfds_new = realloc(pfds, pfds_capacity*sizeof(*pfds));
+		escapes_new = realloc(escapes, pfds_capacity*sizeof(*escapes));
+		if (pfds_new == NULL || escapes_new == NULL) {
+			fprintf(stderr, "Out of memory\n");
+			handler_impl();
+			exit(1);
+		}
+		pfds = pfds_new;
+		escapes = escapes_new;
+	}
+	pfds[pfds_size].fd = fd;
+	pfds[pfds_size].events = POLLIN;
+	pfds[pfds_size].revents = 0;
+	escapes[pfds_size].escape_time64 = 0;
+	escapes[pfds_size].escapebufsize = 0;
+	pfds_size++;
+}
 
 /*
  * TODO use termcap to use correct escape sequences of the terminal
  */
 int read_char(void)
 {
-	char ch;
+	char ch = '\0';
 	int old_flags;
-	struct pollfd pfd = {};
-#if 0
-	struct termios attrs;
-	struct termios attrs2;
-#endif
-	pfd.fd = 0;
-	pfd.events = POLLIN;
-	pfd.revents = 0;
-	if (poll(&pfd, 1, 0) < 1) {
+	int i;
+	if (poll(pfds, pfds_size, 0) < 1) {
 		return '\0';
 	}
-	old_flags = fcntl(0, F_GETFL);
-	if (old_flags < 0) {
-		return '\0';
-	}
-	fcntl(0, F_SETFL, old_flags | O_NONBLOCK);
-#if 0
-	if (tcgetattr(0, &attrs) < 0) {
-		return '\0';
-	}
-	attrs2 = attrs;
-	attrs2.c_lflag &= ~ICANON;
-	tcsetattr(0, TCSANOW, &attrs2);
-#endif
-	if (read(0, &ch, 1) < 1) {
-		ch = '\0';
-	}
-	if (ch == '\x1b') {
-		escape_time64 = gettime64();
-		escapebuf[0] = ch;
-		escapebufsize = 1;
-		ch = '\0';
-	}
-	if (gettime64() - escape_time64 >= 1000000 && escapebufsize > 0) {
-		escapebufsize = 0;
-	}
-	if ((gettime64() - escape_time64 < 1000000) && escapebufsize == 1 && ch == '[') {
-		escapebuf[1] = ch;
-		escapebufsize = 2;
-		ch = '\0';
-	}
-	if ((gettime64() - escape_time64 < 1000000) && escapebufsize == 1 && ch == 'O') {
-		escapebufsize = 0;
-		ch = '\0';
-	}
-	if ((gettime64() - escape_time64 < 1000000) && escapebufsize == 2 && (ch == 'H' || ch == 'F' || ch == 'E')) {
-		escapebufsize = 0;
-		ch = '\0';
-	}
-	if ((gettime64() - escape_time64 < 1000000) && escapebufsize == 2 && (ch == 'A' || ch == 'B' || ch == 'C' || ch == 'D')) {
-		if (ch == 'A') {
-			escapebufsize = 0;
-			fcntl(0, F_SETFL, old_flags);
-			return EXT_UP;
+	if (pfds[0].events & POLLIN) {
+		old_flags = fcntl(pfds[0].fd, F_GETFL);
+		if (old_flags < 0) {
+			return '\0';
 		}
-		if (ch == 'B') {
-			escapebufsize = 0;
-			fcntl(0, F_SETFL, old_flags);
-			return EXT_DOWN;
+		fcntl(pfds[0].fd, F_SETFL, old_flags | O_NONBLOCK);
+		for (;;) {
+			int newfd = accept(pfds[0].fd, NULL, NULL);
+			if (newfd > 0) {
+				pfds_add(newfd);
+			}
+			else if (newfd < 0) {
+				break;
+			}
 		}
-		if (ch == 'C') {
-			escapebufsize = 0;
-			fcntl(0, F_SETFL, old_flags);
-			return EXT_RIGHT;
-		}
-		if (ch == 'D') {
-			escapebufsize = 0;
-			fcntl(0, F_SETFL, old_flags);
-			return EXT_LEFT;
-		}
-		ch = '\0';
+		fcntl(pfds[0].fd, F_SETFL, old_flags);
 	}
-	if ((gettime64() - escape_time64 < 1000000) && escapebufsize == 2 && (ch == '5' || ch == '6')) {
-		escapebuf[2] = ch;
-		escapebufsize = 3;
-		ch = '\0';
-	}
-	if ((gettime64() - escape_time64 < 1000000) && escapebufsize >= 2 && (ch == '~')) {
-		if (escapebufsize == 3 && escapebuf[0] == '\x1b' && escapebuf[1] == '[' && escapebuf[2] == '5') {
-			escapebufsize = 0;
-			fcntl(0, F_SETFL, old_flags);
-			return EXT_PGUP;
+	for (i = 1; i < (int)pfds_size; i++) {
+		if (pfds[i].revents & POLLIN) {
+			int fd = pfds[i].fd;
+			int read_ret;
+			struct escape *esc = &escapes[i];
+			old_flags = fcntl(fd, F_GETFL);
+			if (old_flags < 0) {
+				return '\0';
+			}
+			fcntl(fd, F_SETFL, old_flags | O_NONBLOCK);
+			for (;;) {
+				read_ret = read(fd, &ch, 1);
+				if (read_ret < 0 && (errno == EWOULDBLOCK || errno == EAGAIN)) {
+					ch = '\0';
+					fcntl(fd, F_SETFL, old_flags);
+					break;
+				}
+				if (read_ret < 0) {
+					// FIXME handle
+					ch = '\0';
+					fcntl(fd, F_SETFL, old_flags);
+					break;
+				}
+				if (read_ret == 0 && fd != 0) {
+					pfds[i] = pfds[pfds_size - 1]; // struct assignment
+					escapes[i] = escapes[pfds_size - 1]; // struct assign
+					close(fd);
+					pfds_size--;
+					i--;
+					break;
+				}
+				if (ch == '\x1b') {
+					esc->escape_time64 = gettime64();
+					esc->escapebuf[0] = ch;
+					esc->escapebufsize = 1;
+					ch = '\0';
+				}
+				if (gettime64() - esc->escape_time64 >= 1000000 && esc->escapebufsize > 0) {
+					esc->escapebufsize = 0;
+				}
+				if ((gettime64() - esc->escape_time64 < 1000000) && esc->escapebufsize == 1 && ch == '[') {
+					esc->escapebuf[1] = ch;
+					esc->escapebufsize = 2;
+					ch = '\0';
+				}
+				if ((gettime64() - esc->escape_time64 < 1000000) && esc->escapebufsize == 1 && ch == 'O') {
+					esc->escapebufsize = 0;
+					ch = '\0';
+				}
+				if ((gettime64() - esc->escape_time64 < 1000000) && esc->escapebufsize == 2 && (ch == 'H' || ch == 'F' || ch == 'E')) {
+					esc->escapebufsize = 0;
+					ch = '\0';
+				}
+				if ((gettime64() - esc->escape_time64 < 1000000) && esc->escapebufsize == 2 && (ch == 'A' || ch == 'B' || ch == 'C' || ch == 'D')) {
+					if (ch == 'A') {
+						esc->escapebufsize = 0;
+						fcntl(fd, F_SETFL, old_flags);
+						return EXT_UP;
+					}
+					if (ch == 'B') {
+						esc->escapebufsize = 0;
+						fcntl(fd, F_SETFL, old_flags);
+						return EXT_DOWN;
+					}
+					if (ch == 'C') {
+						esc->escapebufsize = 0;
+						fcntl(fd, F_SETFL, old_flags);
+						return EXT_RIGHT;
+					}
+					if (ch == 'D') {
+						esc->escapebufsize = 0;
+						fcntl(fd, F_SETFL, old_flags);
+						return EXT_LEFT;
+					}
+					ch = '\0';
+				}
+				if ((gettime64() - esc->escape_time64 < 1000000) && esc->escapebufsize == 2 && (ch == '5' || ch == '6')) {
+					esc->escapebuf[2] = ch;
+					esc->escapebufsize = 3;
+					ch = '\0';
+				}
+				if ((gettime64() - esc->escape_time64 < 1000000) && esc->escapebufsize >= 2 && (ch == '~')) {
+					if (esc->escapebufsize == 3 && esc->escapebuf[0] == '\x1b' && esc->escapebuf[1] == '[' && esc->escapebuf[2] == '5') {
+						esc->escapebufsize = 0;
+						fcntl(fd, F_SETFL, old_flags);
+						return EXT_PGUP;
+					}
+					if (esc->escapebufsize == 3 && esc->escapebuf[0] == '\x1b' && esc->escapebuf[1] == '[' && esc->escapebuf[2] == '6') {
+						esc->escapebufsize = 0;
+						fcntl(fd, F_SETFL, old_flags);
+						return EXT_PGDOWN;
+					}
+					ch = '\0';
+					esc->escapebufsize = 0;
+				}
+				if (ch != '\0') {
+					fcntl(0, F_SETFL, old_flags);
+					return ch;
+				}
+			}
+			fcntl(fd, F_SETFL, old_flags);
 		}
-		if (escapebufsize == 3 && escapebuf[0] == '\x1b' && escapebuf[1] == '[' && escapebuf[2] == '6') {
-			escapebufsize = 0;
-			fcntl(0, F_SETFL, old_flags);
-			return EXT_PGDOWN;
-		}
-		ch = '\0';
-		escapebufsize = 0;
 	}
-#if 0
-	tcsetattr(0, TCSANOW, &attrs);
-#endif
-	fcntl(0, F_SETFL, old_flags);
-	return ch;
+	return '\0';
 }
 
 void print_status(const char *fmt, ...)
@@ -460,11 +522,7 @@ void output_audio_frame(AVFrame *frame)
 				}
 				if (ch == ' ' || ch == 'p') {
 					for (;;) {
-						struct pollfd pfd = {};
-						pfd.fd = 0;
-						pfd.events = POLLIN;
-						pfd.revents = 0;
-						if (poll(&pfd, 1, -1) < 1) {
+						if (poll(pfds, pfds_size, -1) < 1) {
 							handler_impl();
 							exit(1);
 						}
@@ -614,6 +672,8 @@ int main(int argc, char **argv)
 	char *fnamebuf;
 	const char *homedir;
 	int first;
+	int sock;
+	struct sockaddr_un sun;
 #if 0
 	AVStream *audio_stream;
 #endif
@@ -636,7 +696,39 @@ int main(int argc, char **argv)
 				break;
 		}
 	}
+
+	pfds = malloc(2*sizeof(*pfds));
+	escapes = malloc(2*sizeof(*escapes));
+	if (pfds == NULL) {
+		fprintf(stderr, "Out of memory\n");
+		handler_impl();
+		exit(1);
+	}
+
+	sock = socket(AF_UNIX, SOCK_STREAM, 0);
+	sun.sun_family = AF_UNIX;
 	homedir = getenv("HOME");
+	pfds[0].fd = -1;
+	pfds[0].events = 0;
+	if (homedir && *homedir != '\0') {
+		if (snprintf(sun.sun_path, sizeof(sun.sun_path), "%s/.mploop/sock", homedir) < (int)sizeof(sun.sun_path)) {
+			unlink(sun.sun_path);
+			if (bind(sock, (const struct sockaddr*)&sun, sizeof(sun)) == 0) {
+				if (listen(sock, 16) == 0) {
+					pfds[0].fd = sock;
+					pfds[0].events = POLLIN;
+				}
+			}
+		}
+	}
+
+	pfds_capacity = 2;
+	pfds_size = 2;
+	pfds[1].fd = 0;
+	pfds[1].events = POLLIN;
+	escapes[1].escapebufsize = 0;
+	escapes[1].escape_time64 = 0;
+
 	if (homedir && *homedir != '\0') {
 		if (snprintf(volfilebuf, sizeof(volfilebuf), "%s/.mploop/vol.txt", homedir) < (int)sizeof(volfilebuf)) {
 			FILE *f;
