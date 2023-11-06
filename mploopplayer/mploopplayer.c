@@ -710,7 +710,7 @@ int main(int argc, char **argv)
 	homedir = getenv("HOME");
 	pfds[0].fd = -1;
 	pfds[0].events = 0;
-	if (homedir && *homedir != '\0') {
+	if (sock > 0 && homedir && *homedir != '\0') {
 		if (snprintf(sun.sun_path, sizeof(sun.sun_path), "%s/.mploop/sock", homedir) < (int)sizeof(sun.sun_path)) {
 			unlink(sun.sun_path);
 			if (bind(sock, (const struct sockaddr*)&sun, sizeof(sun)) == 0) {
