@@ -10,7 +10,7 @@ import getopt
 import libmp
 from pathlib import Path
 
-libmp.touch()
+libmploop.touch()
 
 shuffle = False
 insert = False
@@ -25,8 +25,8 @@ for o, a in opts:
         assert False, "unhandled option"
 
 if len(args) == 0:
-    with libmp.DbLock() as lck:
-        with open(libmp.dbexpanded, "r") as f:
+    with libmploop.DbLock() as lck:
+        with open(libmploop.dbexpanded, "r") as f:
             idx = 0
             for a in f.readlines():
                 if a and a[-1] == '\n':
@@ -41,15 +41,15 @@ for fl in args:
     ap = os.path.abspath(fl)
     if not Path(ap).is_file():
         sys.exit(1)
-    aps.append(libmp.escape(ap))
+    aps.append(libmploop.escape(ap))
 
 if shuffle:
     random.shuffle(aps)
 
-with libmp.DbLock() as lck:
+with libmploop.DbLock() as lck:
     if insert:
         contents = []
-        with open(libmp.dbexpanded, "r") as f:
+        with open(libmploop.dbexpanded, "r") as f:
             idx = 0
             for a in f.readlines():
                 if a and a[-1] == '\n':
@@ -57,10 +57,10 @@ with libmp.DbLock() as lck:
                 contents.append(a)
                 idx += 1
         contents = aps + contents
-        with open(libmp.dbexpanded, "w") as f:
+        with open(libmploop.dbexpanded, "w") as f:
             if contents != []:
                 f.write('\n'.join(contents) + '\n')
     else:
-        with open(libmp.dbexpanded, "a") as f:
+        with open(libmploop.dbexpanded, "a") as f:
             if aps != []:
                 f.write('\n'.join(aps) + '\n')

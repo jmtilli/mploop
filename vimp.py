@@ -10,7 +10,7 @@ import tempfile
 import libmp
 from pathlib import Path
 
-libmp.touch()
+libmploop.touch()
 
 if len(sys.argv) != 1:
     print("Usage: vimp")
@@ -24,8 +24,8 @@ if os.getenv('VISUAL', '') != '':
 elif os.getenv('EDITOR', '') != '':
     editor = os.getenv('EDITOR', '')
 
-with libmp.DbLock() as lck:
-    with open(libmp.dbexpanded, "r") as f:
+with libmploop.DbLock() as lck:
+    with open(libmploop.dbexpanded, "r") as f:
         idx = 0
         for a in f.readlines():
             if a and a[-1] == '\n':
@@ -46,7 +46,7 @@ with libmp.DbLock() as lck:
             a = re.sub('^\\[[0-9]+\\] ', '', a)
             contents.append(a)
             idx += 1
-    with open(libmp.dbexpanded, "w") as f:
+    with open(libmploop.dbexpanded, "w") as f:
         if contents != []:
             f.write('\n'.join(contents) + '\n')
 

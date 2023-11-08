@@ -13,7 +13,7 @@ import errno
 import libmp
 from pathlib import Path
 
-libmp.touch()
+libmploop.touch()
 
 # Mandatory tools to run:
 # - mplayer
@@ -30,27 +30,27 @@ offset = 6.0
 offset2 = 6.0
 mploopplayer_extraoffset = 0.0
 
-mainlck = libmp.MainLock()
+mainlck = libmploop.MainLock()
 
-adaptive_sleep = libmp.AdaptiveSleep()
+adaptive_sleep = libmploop.AdaptiveSleep()
 
 toclear = True
 
 try:
     while True:
-        if os.stat(libmp.dbexpanded).st_size == 0:
+        if os.stat(libmploop.dbexpanded).st_size == 0:
             if toclear:
-                with open(libmp.npexpanded, "w") as f:
+                with open(libmploop.npexpanded, "w") as f:
                     f.write('')
                 toclear = False
             adaptive_sleep.sleep()
             continue
-        with libmp.DbLock() as lck:
-            with open(libmp.dbexpanded, 'r') as f:
+        with libmploop.DbLock() as lck:
+            with open(libmploop.dbexpanded, 'r') as f:
                 ln = f.readline()
                 if ln == '':
                     if toclear:
-                        with open(libmp.npexpanded, "w") as f:
+                        with open(libmploop.npexpanded, "w") as f:
                             f.write('')
                         toclear = False
                     adaptive_sleep.sleep()
@@ -59,16 +59,16 @@ try:
                 if ln and ln[-1] == '\n':
                     ln = ln[:-1]
                 rawln = ln
-                ln = libmp.unescape(ln)
+                ln = libmploop.unescape(ln)
                 rest = ''.join(f.readlines())
-            with open(libmp.dbexpanded, "w") as f:
+            with open(libmploop.dbexpanded, "w") as f:
                 f.write(rest)
-            with open(libmp.pastexpanded, 'r') as f:
+            with open(libmploop.pastexpanded, 'r') as f:
                 allpast = rawln + '\n' + ''.join(f.readlines())
-            with open(libmp.pastexpanded, 'w') as f:
+            with open(libmploop.pastexpanded, 'w') as f:
                 f.write(allpast)
-        gain,comments = libmp.get_gain(ln)
-        if libmp.clear_stdin():
+        gain,comments = libmploop.get_gain(ln)
+        if libmploop.clear_stdin():
             print("")
         print(80*"=")
         print("Applying gain:", gain-offset2)
@@ -90,12 +90,12 @@ try:
             f.write("FILE=" + rawln + '\n' + '\n'.join(c[0] + "=" + c[1] for c in comments) + '\n')
         toclear=True
         print(80*"-")
-        if libmp.mploopplayer:
-            subprocess.run([libmp.mploopplayer, "-g", str(gain-offset2-mploopplayer_extraoffset), "--", ln])
+        if libmploop.mploopplayer:
+            subprocess.run([libmploop.mploopplayer, "-g", str(gain-offset2-mploopplayer_extraoffset), "--", ln])
         else:
             subprocess.run(["mplayer", "-novideo", "-nolirc", "-msglevel", "all=0:statusline=5:cplayer=5", "-af", "volume=" + str(gain-offset2) + ":1", "--", ln])
         print("")
 except KeyboardInterrupt:
-    with open(libmp.npexpanded, "w") as f:
+    with open(libmploop.npexpanded, "w") as f:
         f.write('')
     print("")

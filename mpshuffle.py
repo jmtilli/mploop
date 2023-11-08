@@ -11,15 +11,15 @@ import tempfile
 import libmp
 from pathlib import Path
 
-libmp.touch()
+libmploop.touch()
 
 if len(sys.argv) != 1:
     print("Usage: mpshuffle")
     sys.exit(1)
 
 contents = []
-with libmp.DbLock() as lck:
-    with open(libmp.dbexpanded, "r") as f:
+with libmploop.DbLock() as lck:
+    with open(libmploop.dbexpanded, "r") as f:
         idx = 0
         for a in f.readlines():
             if a and a[-1] == '\n':
@@ -27,7 +27,7 @@ with libmp.DbLock() as lck:
             contents.append(a)
             idx += 1
     random.shuffle(contents)
-    with open(libmp.dbexpanded, "w") as f:
+    with open(libmploop.dbexpanded, "w") as f:
         if contents != []:
             f.write('\n'.join(contents) + '\n')
 

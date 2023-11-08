@@ -8,7 +8,7 @@ import subprocess
 import libmp
 from pathlib import Path
 
-libmp.touch()
+libmploop.touch()
 
 if len(sys.argv) < 2:
     print("Usage: mprm idx1 idx2 idx3 ...")
@@ -18,9 +18,9 @@ s = set([])
 for idx in sys.argv[1:]:
     s.add(int(idx))
 
-with libmp.DbLock() as lck:
+with libmploop.DbLock() as lck:
     contents = []
-    with open(libmp.dbexpanded, "r") as f:
+    with open(libmploop.dbexpanded, "r") as f:
         idx = 0
         for a in f.readlines():
             if a and a[-1] == '\n':
@@ -28,6 +28,6 @@ with libmp.DbLock() as lck:
             if idx not in s:
                 contents.append(a)
             idx += 1
-    with open(libmp.dbexpanded, "w") as f:
+    with open(libmploop.dbexpanded, "w") as f:
         if contents != []:
             f.write('\n'.join(contents) + '\n')
