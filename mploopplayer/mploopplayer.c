@@ -336,6 +336,57 @@ static inline uint8_t for_every_sample8(uint8_t x)
 	return (uint8_t)(res + 128);
 }
 
+void handle_chars(int ch)
+{
+	if (ch == '?') {
+		seeks = INT_MIN/2;
+	}
+	if (ch == EXT_UP) {
+		seeks += 60;
+		//printf("\n\nUP\n\n");
+	}
+	if (ch == EXT_DOWN) {
+		seeks -= 60;
+		//printf("\n\nDOWN\n\n");
+	}
+	if (ch == EXT_LEFT) {
+		seeks -= 10;
+		//printf("\n\nLEFT\n\n");
+	}
+	if (ch == EXT_RIGHT) {
+		seeks += 10;
+		//printf("\n\nRIGHT\n\n");
+	}
+	if (ch == EXT_PGUP) {
+		seeks += 600;
+		//printf("\n\nPGUP\n\n");
+	}
+	if (ch == EXT_PGDOWN) {
+		seeks -= 600;
+		//printf("\n\nPGDOWN\n\n");
+	}
+	if (ch == '/' || ch == '9') {
+		FILE *f;
+		volume_db -= 1;
+		volume_mul = powf(10.0, (gain_db+volume_db)/20.0);
+		f = fopen(volfile, "w");
+		if (f) {
+			fprintf(f, "%f\n", volume_db);
+			fclose(f);
+		}
+	}
+	if (ch == '*' || ch == '0') {
+		FILE *f;
+		volume_db += 1;
+		volume_mul = powf(10.0, (gain_db+volume_db)/20.0);
+		f = fopen(volfile, "w");
+		if (f) {
+			fprintf(f, "%f\n", volume_db);
+			fclose(f);
+		}
+	}
+}
+
 void output_audio_frame(AVFrame *frame)
 {
 	int i;
@@ -472,53 +523,10 @@ void output_audio_frame(AVFrame *frame)
 		else {
 			int ch;
 			while ((ch = read_char()) != '\0') {
+				handle_chars(ch);
 				if (ch == '\n' || ch == 'q') {
 					handler_impl();
 					exit(0);
-				}
-				if (ch == EXT_UP) {
-					seeks += 60;
-					//printf("\n\nUP\n\n");
-				}
-				if (ch == EXT_DOWN) {
-					seeks -= 60;
-					//printf("\n\nDOWN\n\n");
-				}
-				if (ch == EXT_LEFT) {
-					seeks -= 10;
-					//printf("\n\nLEFT\n\n");
-				}
-				if (ch == EXT_RIGHT) {
-					seeks += 10;
-					//printf("\n\nRIGHT\n\n");
-				}
-				if (ch == EXT_PGUP) {
-					seeks += 600;
-					//printf("\n\nPGUP\n\n");
-				}
-				if (ch == EXT_PGDOWN) {
-					seeks -= 600;
-					//printf("\n\nPGDOWN\n\n");
-				}
-				if (ch == '/' || ch == '9') {
-					FILE *f;
-					volume_db -= 1;
-					volume_mul = powf(10.0, (gain_db+volume_db)/20.0);
-					f = fopen(volfile, "w");
-					if (f) {
-						fprintf(f, "%f\n", volume_db);
-						fclose(f);
-					}
-				}
-				if (ch == '*' || ch == '0') {
-					FILE *f;
-					volume_db += 1;
-					volume_mul = powf(10.0, (gain_db+volume_db)/20.0);
-					f = fopen(volfile, "w");
-					if (f) {
-						fprintf(f, "%f\n", volume_db);
-						fclose(f);
-					}
 				}
 				if (ch == ' ' || ch == 'p') {
 					for (;;) {
@@ -527,6 +535,7 @@ void output_audio_frame(AVFrame *frame)
 							exit(1);
 						}
 						ch = read_char();
+						handle_chars(ch);
 						if (ch == '\n' || ch == 'q') {
 							handler_impl();
 							exit(0);
@@ -1036,7 +1045,11 @@ int main(int argc, char **argv)
 		}
 		av_packet_unref(packet);
 		if (seeks != 0) {
-			int64_t ts = pts + seeks*avfctx->streams[aidx]->time_base.den/avfctx->streams[aidx]->time_base.num;
+			int64_t ts = pts + ((int64_t)seeks)*avfctx->streams[aidx]->time_base.den/avfctx->streams[aidx]->time_base.num;
+			if (seeks < INT_MIN/4)
+			{
+				ts = 0;
+			}
 			if (ts < 0) {
 				ts = 0;
 			}

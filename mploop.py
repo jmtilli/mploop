@@ -14,6 +14,7 @@ from pathlib import Path
 
 os.makedirs(os.path.expanduser('~') + '/.mploop', exist_ok = True)
 Path(os.path.expanduser('~') + '/.mploop/db.txt').touch()
+Path(os.path.expanduser('~') + '/.mploop/past.txt').touch()
 
 mploopplayer = os.path.dirname(os.path.realpath(sys.argv[0])) + '/mploopplayer/mploopplayer'
 if not os.access(mploopplayer, os.X_OK):
@@ -405,6 +406,7 @@ fcntl.flock(mainlck, fcntl.LOCK_EX | fcntl.LOCK_NB)
 last_seen = time.monotonic()
 
 expanded = os.path.expanduser('~') + '/.mploop/db.txt'
+pastexpanded = os.path.expanduser('~') + '/.mploop/past.txt'
 npexpanded = os.path.expanduser('~') + '/.mploop/np.txt'
 
 toclear = True
@@ -455,6 +457,10 @@ try:
             rest = ''.join(f.readlines())
         with open(expanded, "w") as f:
             f.write(rest)
+        with open(pastexpanded, 'r') as f:
+            allpast = rawln + '\n' + ''.join(f.readlines())
+        with open(pastexpanded, 'w') as f:
+            f.write(allpast)
         os.close(lck)
         gain,comments = get_gain(ln)
         if clear_stdin():
