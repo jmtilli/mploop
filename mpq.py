@@ -7,10 +7,10 @@ import sys
 import subprocess
 import random
 import getopt
+import libmp
 from pathlib import Path
 
-os.makedirs(os.path.expanduser('~') + '/.mploop', exist_ok = True)
-Path(os.path.expanduser('~') + '/.mploop/db.txt').touch()
+libmp.touch()
 
 shuffle = False
 insert = False
@@ -24,19 +24,15 @@ for o, a in opts:
     else:
         assert False, "unhandled option"
 
-def escape(x):
-    return x.replace("\\", "\\\\").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
-
 if len(args) == 0:
-    lck = os.open(os.path.expanduser('~') + '/.mploop/db.txt', os.O_RDWR | os.O_CREAT, 0o777)
-    with open(os.path.expanduser('~') + '/.mploop/db.txt', "r") as f:
-        idx = 0
-        for a in f.readlines():
-            if a and a[-1] == '\n':
-                a = a[:-1]
-            print("[" + str(idx) + "] " + a)
-            idx += 1
-    os.close(lck)
+    with libmp.DbLock() as lck:
+        with open(libmp.dbexpanded, "r") as f:
+            idx = 0
+            for a in f.readlines():
+                if a and a[-1] == '\n':
+                    a = a[:-1]
+                print("[" + str(idx) + "] " + a)
+                idx += 1
     sys.exit(0)
 
 aps = []
@@ -45,28 +41,26 @@ for fl in args:
     ap = os.path.abspath(fl)
     if not Path(ap).is_file():
         sys.exit(1)
-    aps.append(escape(ap))
+    aps.append(libmp.escape(ap))
 
 if shuffle:
     random.shuffle(aps)
 
-lck = os.open(os.path.expanduser('~') + '/.mploop/db.txt', os.O_RDWR | os.O_CREAT, 0o777)
-fcntl.flock(lck, fcntl.LOCK_EX)
-if insert:
-    contents = []
-    with open(os.path.expanduser('~') + '/.mploop/db.txt', "r") as f:
-        idx = 0
-        for a in f.readlines():
-            if a and a[-1] == '\n':
-                a = a[:-1]
-            contents.append(a)
-            idx += 1
-    contents = aps + contents
-    with open(os.path.expanduser('~') + '/.mploop/db.txt', "w") as f:
-        if contents != []:
-            f.write('\n'.join(contents) + '\n')
-else:
-    with open(os.path.expanduser('~') + '/.mploop/db.txt', "a") as f:
-        if aps != []:
-            f.write('\n'.join(aps) + '\n')
-os.close(lck)
+with libmp.DbLock() as lck:
+    if insert:
+        contents = []
+        with open(libmp.dbexpanded, "r") as f:
+            idx = 0
+            for a in f.readlines():
+                if a and a[-1] == '\n':
+                    a = a[:-1]
+                contents.append(a)
+                idx += 1
+        contents = aps + contents
+        with open(libmp.dbexpanded, "w") as f:
+            if contents != []:
+                f.write('\n'.join(contents) + '\n')
+    else:
+        with open(libmp.dbexpanded, "a") as f:
+            if aps != []:
+                f.write('\n'.join(aps) + '\n')

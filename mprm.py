@@ -5,13 +5,10 @@ import time
 import io
 import sys
 import subprocess
+import libmp
 from pathlib import Path
 
-os.makedirs(os.path.expanduser('~') + '/.mploop', exist_ok = True)
-Path(os.path.expanduser('~') + '/.mploop/db.txt').touch()
-
-def escape(x):
-    return x.replace("\\", "\\\\").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
+libmp.touch()
 
 if len(sys.argv) < 2:
     print("Usage: mprm idx1 idx2 idx3 ...")
@@ -21,18 +18,16 @@ s = set([])
 for idx in sys.argv[1:]:
     s.add(int(idx))
 
-lck = os.open(os.path.expanduser('~') + '/.mploop/db.txt', os.O_RDWR | os.O_CREAT, 0o777)
-fcntl.flock(lck, fcntl.LOCK_EX)
-contents = []
-with open(os.path.expanduser('~') + '/.mploop/db.txt', "r") as f:
-    idx = 0
-    for a in f.readlines():
-        if a and a[-1] == '\n':
-            a = a[:-1]
-        if idx not in s:
-            contents.append(a)
-        idx += 1
-with open(os.path.expanduser('~') + '/.mploop/db.txt', "w") as f:
-    if contents != []:
-        f.write('\n'.join(contents) + '\n')
-os.close(lck)
+with libmp.DbLock() as lck:
+    contents = []
+    with open(libmp.dbexpanded, "r") as f:
+        idx = 0
+        for a in f.readlines():
+            if a and a[-1] == '\n':
+                a = a[:-1]
+            if idx not in s:
+                contents.append(a)
+            idx += 1
+    with open(libmp.dbexpanded, "w") as f:
+        if contents != []:
+            f.write('\n'.join(contents) + '\n')

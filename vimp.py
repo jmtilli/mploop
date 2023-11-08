@@ -7,10 +7,10 @@ import io
 import sys
 import subprocess
 import tempfile
+import libmp
 from pathlib import Path
 
-os.makedirs(os.path.expanduser('~') + '/.mploop', exist_ok = True)
-Path(os.path.expanduser('~') + '/.mploop/db.txt').touch()
+libmp.touch()
 
 if len(sys.argv) != 1:
     print("Usage: vimp")
@@ -24,33 +24,31 @@ if os.getenv('VISUAL', '') != '':
 elif os.getenv('EDITOR', '') != '':
     editor = os.getenv('EDITOR', '')
 
-lck = os.open(os.path.expanduser('~') + '/.mploop/db.txt', os.O_RDWR | os.O_CREAT, 0o777)
-fcntl.flock(lck, fcntl.LOCK_EX)
-with open(os.path.expanduser('~') + '/.mploop/db.txt', "r") as f:
-    idx = 0
-    for a in f.readlines():
-        if a and a[-1] == '\n':
-            a = a[:-1]
-        sio.write("[" + str(idx) + "] " + a + '\n')
-        idx += 1
-with open(path, "w") as f:
-    f.write(sio.getvalue())
-subprocess.run([editor, "--", path])
-contents = []
-with open(path, "r") as f:
-    idx = 0
-    for a in f.readlines():
-        if a and a[-1] == '\n':
-            a = a[:-1]
-        if not re.match('^\\[[0-9]+\\] ', a):
-            assert False
-        a = re.sub('^\\[[0-9]+\\] ', '', a)
-        contents.append(a)
-        idx += 1
-with open(os.path.expanduser('~') + '/.mploop/db.txt', "w") as f:
-    if contents != []:
-        f.write('\n'.join(contents) + '\n')
+with libmp.DbLock() as lck:
+    with open(libmp.dbexpanded, "r") as f:
+        idx = 0
+        for a in f.readlines():
+            if a and a[-1] == '\n':
+                a = a[:-1]
+            sio.write("[" + str(idx) + "] " + a + '\n')
+            idx += 1
+    with open(path, "w") as f:
+        f.write(sio.getvalue())
+    subprocess.run([editor, "--", path])
+    contents = []
+    with open(path, "r") as f:
+        idx = 0
+        for a in f.readlines():
+            if a and a[-1] == '\n':
+                a = a[:-1]
+            if not re.match('^\\[[0-9]+\\] ', a):
+                assert False
+            a = re.sub('^\\[[0-9]+\\] ', '', a)
+            contents.append(a)
+            idx += 1
+    with open(libmp.dbexpanded, "w") as f:
+        if contents != []:
+            f.write('\n'.join(contents) + '\n')
 
-os.close(lck)
 os.unlink(path)
 sys.exit(0)
