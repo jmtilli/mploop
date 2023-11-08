@@ -5,6 +5,7 @@ import termios
 import time
 import subprocess
 import select
+import socket
 import io
 from pathlib import Path
 
@@ -15,6 +16,17 @@ if not os.access(mploopplayer, os.X_OK):
 dbexpanded = os.path.expanduser('~') + '/.mploop/db.txt'
 pastexpanded = os.path.expanduser('~') + '/.mploop/past.txt'
 npexpanded = os.path.expanduser('~') + '/.mploop/np.txt'
+sockexpanded = os.path.expanduser('~') + '/.mploop/sock'
+
+def send_mploop_command(cmd):
+    if mploopplayer is None:
+        raise Exception("Must have mploopplayer compiled to send commands")
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    try:
+        sock.connect(sockexpanded)
+        sock.sendall(cmd.encode())
+    finally:
+        sock.close()
 
 def unescape(x):
     res = io.StringIO()

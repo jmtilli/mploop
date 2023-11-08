@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import subprocess
 import os
 import fcntl
 import libmploop
@@ -22,4 +21,4 @@ with libmploop.DbLock() as lck:
     with open(libmploop.dbexpanded, 'w') as f:
         f.write(''.join(toput + queue))
     if np:
-        subprocess.run(["sh", "-c", "echo|socat - \"unix:$HOME/.mploop/sock\""])
+        libmploop.send_mploop_command("q")
