@@ -8,7 +8,7 @@ import sys
 import subprocess
 import random
 import tempfile
-import libmp
+import libmploop
 from pathlib import Path
 
 libmploop.touch()

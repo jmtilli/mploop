@@ -10,7 +10,7 @@ import termios
 import select
 import fcntl
 import errno
-import libmp
+import libmploop
 from pathlib import Path
 
 libmploop.touch()

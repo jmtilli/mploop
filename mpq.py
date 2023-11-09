@@ -7,7 +7,7 @@ import sys
 import subprocess
 import random
 import getopt
-import libmp
+import libmploop
 from pathlib import Path
 
 libmploop.touch()

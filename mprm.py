@@ -5,7 +5,7 @@ import time
 import io
 import sys
 import subprocess
-import libmp
+import libmploop
 from pathlib import Path
 
 libmploop.touch()
