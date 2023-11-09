@@ -11,7 +11,7 @@ from pathlib import Path
 
 mploopplayer = os.path.dirname(os.path.realpath(sys.argv[0])) + '/mploopplayer/mploopplayer'
 if not os.access(mploopplayer, os.X_OK):
-    mplooplayer = None
+    mploopplayer = None
 
 dbexpanded = os.path.expanduser('~') + '/.mploop/db.txt'
 pastexpanded = os.path.expanduser('~') + '/.mploop/past.txt'
