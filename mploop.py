@@ -91,9 +91,15 @@ try:
         toclear=True
         print(80*"-")
         if libmploop.mploopplayer:
-            subprocess.run([libmploop.mploopplayer, "-g", str(gain-offset2-mploopplayer_extraoffset), "--", ln])
+            proc = subprocess.Popen([libmploop.mploopplayer, "-g", str(gain-offset2-mploopplayer_extraoffset), "--", ln])
+            with open(libmploop.mploopplayerpidexpanded, 'w') as f:
+                f.write(str(proc.pid) + '\n')
+            proc.wait()
         else:
-            subprocess.run(["mplayer", "-novideo", "-nolirc", "-msglevel", "all=0:statusline=5:cplayer=5", "-af", "volume=" + str(gain-offset2) + ":1", "--", ln])
+            proc = subprocess.Popen(["mplayer", "-novideo", "-nolirc", "-msglevel", "all=0:statusline=5:cplayer=5", "-af", "volume=" + str(gain-offset2) + ":1", "--", ln])
+            with open(libmploop.mplayerpidexpanded, 'w') as f:
+                f.write(str(proc.pid) + '\n')
+            proc.wait()
         print("")
 except KeyboardInterrupt:
     with open(libmploop.npexpanded, "w") as f:

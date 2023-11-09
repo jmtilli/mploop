@@ -16,6 +16,8 @@ if not os.access(mploopplayer, os.X_OK):
 dbexpanded = os.path.expanduser('~') + '/.mploop/db.txt'
 pastexpanded = os.path.expanduser('~') + '/.mploop/past.txt'
 npexpanded = os.path.expanduser('~') + '/.mploop/np.txt'
+mploopplayerpidexpanded = os.path.expanduser('~') + '/.mploop/mploopplayer.pid'
+mplayerpidexpanded = os.path.expanduser('~') + '/.mploop/mplayer.pid'
 sockexpanded = os.path.expanduser('~') + '/.mploop/sock'
 
 def send_mploop_command(cmd):
