@@ -21,12 +21,15 @@ mplayerpidexpanded = os.path.expanduser('~') + '/.mploop/mplayer.pid'
 sockexpanded = os.path.expanduser('~') + '/.mploop/sock'
 mplayersockexpanded = os.path.expanduser('~') + '/.mploop/mplayer.sock'
 
-def send_mploop_command(cmd):
+def send_mploop_command(cmd, mplayercmd=None):
     if mploopplayer is None:
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
             sock.connect(mplayersockexpanded)
-            sock.sendall(cmd.encode())
+            if mplayercmd != None:
+                sock.sendall(mplayercmd.encode())
+            else:
+                sock.sendall(cmd.encode())
         finally:
             sock.close()
     else:
