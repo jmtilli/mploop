@@ -442,3 +442,53 @@ def get_gain(ln):
     if albumgain_db != None:
         return (albumgain_db + (magic_ref - ref), comments)
     return (trackgain_db + (magic_ref - ref), comments)
+
+def skip(cnt):
+    if cnt == 0:
+        pass
+    elif cnt == 1:
+        with open(npexpanded, 'r') as f:
+            np = (f.read() != '')
+        if not np:
+            print("Not playing currently")
+            sys.exit(1)
+        send_mploop_command("q")
+    elif cnt > 1:
+        with DbLock() as lck:
+            with open(npexpanded, 'r') as f:
+                np = (f.read() != '')
+            if not np:
+                print("Not playing currently")
+                sys.exit(1)
+            with open(dbexpanded, 'r') as f:
+                queue = f.readlines()
+                toput = list(reversed(queue[0:(cnt-1)]))
+                queueremain = queue[(cnt-1):]
+            with open(pastexpanded, 'r') as f:
+                past = f.readlines()
+            with open(pastexpanded, 'w') as f:
+                f.write(''.join(toput + past))
+            with open(dbexpanded, 'w') as f:
+                f.write(''.join(queueremain))
+            send_mploop_command("q")
+    else:
+        acnt = abs(cnt)
+        with DbLock() as lck:
+            with open(npexpanded, 'r') as f:
+                np = (f.read() != '')
+            with open(pastexpanded, 'r') as f:
+                past = f.readlines()
+                if np:
+                    toput = list(reversed(past[0:(1+acnt)]))
+                    pastremain = past[(1+acnt):]
+                else:
+                    toput = list(reversed(past[0:acnt]))
+                    pastremain = past[acnt:]
+            with open(pastexpanded, 'w') as f:
+                f.write(''.join(pastremain))
+            with open(dbexpanded, 'r') as f:
+                queue = f.readlines()
+            with open(dbexpanded, 'w') as f:
+                f.write(''.join(toput + queue))
+            if np:
+                send_mploop_command("q")
