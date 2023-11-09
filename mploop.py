@@ -91,7 +91,7 @@ try:
         toclear=True
         print(80*"-")
         if libmploop.mploopplayer:
-            proc = subprocess.Popen([libmploop.mploopplayer, "-g", str(gain-offset2-mploopplayer_extraoffset), "--", ln])
+            proc = subprocess.Popen([libmploop.mploopplayer, "-s", libmploop.sockexpanded, "-g", str(gain-offset2-mploopplayer_extraoffset), "--", ln])
             with open(libmploop.mploopplayerpidexpanded, 'w') as f:
                 f.write(str(proc.pid) + '\n')
             proc.wait()

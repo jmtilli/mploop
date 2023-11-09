@@ -681,14 +681,20 @@ int main(int argc, char **argv)
 	char *fnamebuf;
 	const char *homedir;
 	int first;
-	int sock;
+	int sock = -1;
+	int usesock = 0;
+	const char *sockarg = NULL;
 	struct sockaddr_un sun;
 #if 0
 	AVStream *audio_stream;
 #endif
 
-	while ((opt = getopt(argc, argv, "g:")) != -1) {
+	while ((opt = getopt(argc, argv, "s:g:")) != -1) {
 		switch (opt) {
+			case 's':
+				sockarg = optarg;
+				usesock = 1;
+				break;
 			case 'g':
 				if (!optarg)
 				{
@@ -714,13 +720,16 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	sock = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (usesock) {
+		sock = socket(AF_UNIX, SOCK_STREAM, 0);
+	}
 	sun.sun_family = AF_UNIX;
 	homedir = getenv("HOME");
 	pfds[0].fd = -1;
 	pfds[0].events = 0;
 	if (sock > 0 && homedir && *homedir != '\0') {
-		if (snprintf(sun.sun_path, sizeof(sun.sun_path), "%s/.mploop/sock", homedir) < (int)sizeof(sun.sun_path)) {
+		//if (snprintf(sun.sun_path, sizeof(sun.sun_path), "%s/.mploop/sock", homedir) < (int)sizeof(sun.sun_path)) {
+		if (snprintf(sun.sun_path, sizeof(sun.sun_path), "%s", sockarg) < (int)sizeof(sun.sun_path)) {
 			unlink(sun.sun_path);
 			if (bind(sock, (const struct sockaddr*)&sun, sizeof(sun)) == 0) {
 				if (listen(sock, 16) == 0) {
