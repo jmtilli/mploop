@@ -19,16 +19,23 @@ npexpanded = os.path.expanduser('~') + '/.mploop/np.txt'
 mploopplayerpidexpanded = os.path.expanduser('~') + '/.mploop/mploopplayer.pid'
 mplayerpidexpanded = os.path.expanduser('~') + '/.mploop/mplayer.pid'
 sockexpanded = os.path.expanduser('~') + '/.mploop/sock'
+mplayersockexpanded = os.path.expanduser('~') + '/.mploop/mplayer.sock'
 
 def send_mploop_command(cmd):
     if mploopplayer is None:
-        raise Exception("Must have mploopplayer compiled to send commands")
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    try:
-        sock.connect(sockexpanded)
-        sock.sendall(cmd.encode())
-    finally:
-        sock.close()
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        try:
+            sock.connect(mplayersockexpanded)
+            sock.sendall(cmd.encode())
+        finally:
+            sock.close()
+    else:
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        try:
+            sock.connect(sockexpanded)
+            sock.sendall(cmd.encode())
+        finally:
+            sock.close()
 
 def unescape(x):
     res = io.StringIO()

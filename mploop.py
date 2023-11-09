@@ -5,6 +5,7 @@ import re
 import fcntl
 import time
 import io
+import socket
 import subprocess
 import termios
 import select
@@ -96,9 +97,60 @@ try:
                 f.write(str(proc.pid) + '\n')
             proc.wait()
         else:
-            proc = subprocess.Popen(["mplayer", "-novideo", "-nolirc", "-msglevel", "all=0:statusline=5:cplayer=5", "-af", "volume=" + str(gain-offset2) + ":1", "--", ln])
+            proc = subprocess.Popen(["mplayer", "-novideo", "-nolirc", "-msglevel", "all=0:statusline=5:cplayer=5", "-af", "volume=" + str(gain-offset2) + ":1", "--", ln], stdin=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
             with open(libmploop.mplayerpidexpanded, 'w') as f:
                 f.write(str(proc.pid) + '\n')
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            try:
+                os.unlink(libmploop.mplayersockexpanded)
+            except FileNotFoundError:
+                pass
+            sock.bind(libmploop.mplayersockexpanded)
+            sock.listen(16)
+            fds = set([])
+            p = select.poll()
+            p.register(sys.stdin, select.POLLIN)
+            p.register(proc.stderr, select.POLLIN)
+            p.register(sock, select.POLLIN)
+            eof = False
+            old_settings = termios.tcgetattr(sys.stdin)
+            new_settings = termios.tcgetattr(sys.stdin)
+            new_settings[3] = new_settings[3] & ~termios.ICANON & ~termios.ECHO
+            termios.tcsetattr(sys.stdin, termios.TCSANOW, new_settings)
+            socks = {}
+            try:
+                while not eof:
+                    for fd, revent in p.poll():
+                        if fd == sock.fileno() and (revent & select.POLLIN):
+                            newfd, cliaddr = sock.accept()
+                            fds.add(newfd.fileno())
+                            p.register(newfd.fileno(), select.POLLIN)
+                            socks[newfd.fileno()] = newfd
+                        elif fd == sys.stdin.fileno() and (revent & select.POLLIN):
+                            buf = os.read(sys.stdin.fileno(), 4096)
+                            proc.stdin.write(buf)
+                            proc.stdin.flush()
+                        elif fd == proc.stderr.fileno() and (revent & (select.POLLIN | select.POLLHUP)):
+                            buf = os.read(proc.stderr.fileno(), 4096)
+                            if buf == b'':
+                                eof = True
+                                continue
+                            sys.stderr.write(buf)
+                            sys.stderr.flush()
+                        elif fd != sock.fileno() and fd != sys.stdin.fileno() and fd != proc.stderr.fileno() and (revent & (select.POLLIN | select.POLLHUP)):
+                            buf = os.read(fd, 4096)
+                            if buf == b'':
+                                p.unregister(fd)
+                                socks[fd].close()
+                                fds.remove(fd)
+                                continue
+                            proc.stdin.write(buf)
+                            proc.stdin.flush()
+            finally:
+                termios.tcsetattr(sys.stdin, termios.TCSANOW, old_settings)
+            for newfd in fds:
+                socks[newfd].close()
+            sock.close()
             proc.wait()
         print("")
 except KeyboardInterrupt:
