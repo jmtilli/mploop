@@ -461,7 +461,7 @@ def get_gain(ln):
                 if e.errno != errno.ENOENT:
                     raise
             if out == [""]:
-                proc = subprocess.Popen(["vorbiscomment", "--", ln], stdout=subprocess.PIPE)
+                proc = subprocess.Popen(["vorbiscomment", "--", ln], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 out,err = proc.communicate()
                 proc.wait()
                 out = out.decode("utf-8").split("\n")
