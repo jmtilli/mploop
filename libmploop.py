@@ -101,13 +101,19 @@ def clear_stdin():
     fcntl.fcntl(sys.stdin, fcntl.F_SETFL, old_flags)
     return seen_input
 
+def maybe_monotonic_time():
+    if hasattr(time, "monotonic"):
+        return time.monotonic()
+    else:
+        return time.time()
+
 class AdaptiveSleep(object):
     def __init__(self):
         self.seen()
     def seen(self):
-        self.last_seen = time.monotonic()
+        self.last_seen = maybe_monotonic_time()
     def sleep(self):
-        now_monotonic = time.monotonic()
+        now_monotonic = maybe_monotonic_time()
         if now_monotonic - self.last_seen < 60:
             time.sleep(0.3)
         elif now_monotonic - self.last_seen < 600:
