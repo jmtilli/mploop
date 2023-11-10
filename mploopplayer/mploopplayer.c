@@ -683,14 +683,18 @@ int main(int argc, char **argv)
 	int first;
 	int sock = -1;
 	int usesock = 0;
+	int urlmode = 0;
 	const char *sockarg = NULL;
 	struct sockaddr_un sun;
 #if 0
 	AVStream *audio_stream;
 #endif
 
-	while ((opt = getopt(argc, argv, "s:g:")) != -1) {
+	while ((opt = getopt(argc, argv, "us:g:")) != -1) {
 		switch (opt) {
+			case 'u':
+				urlmode = 1;
+				break;
 			case 's':
 				sockarg = optarg;
 				usesock = 1;
@@ -766,7 +770,7 @@ int main(int argc, char **argv)
 	if (argc != optind + 1) {
 		usage(argv[0]);
 	}
-	if (access(argv[optind], R_OK) != 0) {
+	if (!urlmode && access(argv[optind], R_OK) != 0) {
 		fprintf(stderr, "Cannot access file: %s\n", argv[optind]);
 		handler_impl();
 		exit(1);
@@ -778,7 +782,7 @@ int main(int argc, char **argv)
 		handler_impl();
 		exit(1);
 	}
-	snprintf(fnamebuf, fnamebuflen, "file:%s", argv[optind]);
+	snprintf(fnamebuf, fnamebuflen, urlmode ? "%s" : "file:%s", argv[optind]);
 
 	SDL_Init(SDL_INIT_AUDIO);
 	av_log_set_callback(log_cb);
