@@ -6,7 +6,6 @@ import io
 import sys
 import subprocess
 import libmploop
-from pathlib import Path
 
 libmploop.touch()
 

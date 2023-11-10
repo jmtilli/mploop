@@ -12,7 +12,6 @@ import select
 import fcntl
 import errno
 import libmploop
-from pathlib import Path
 
 libmploop.touch()
 

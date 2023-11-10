@@ -8,7 +8,6 @@ import subprocess
 import random
 import getopt
 import libmploop
-from pathlib import Path
 
 libmploop.touch()
 
@@ -39,7 +38,8 @@ aps = []
 
 for fl in args:
     ap = os.path.abspath(fl)
-    if not Path(ap).is_file():
+    if not os.path.isfile(ap):
+        print(fl + " is not file")
         sys.exit(1)
     aps.append(libmploop.escape(ap))
 

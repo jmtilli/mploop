@@ -7,7 +7,6 @@ import subprocess
 import select
 import socket
 import io
-from pathlib import Path
 
 mploopplayer = os.path.dirname(os.path.realpath(sys.argv[0])) + '/mploopplayer/mploopplayer'
 if not os.access(mploopplayer, os.X_OK):
@@ -368,8 +367,10 @@ def get_opusinfo(ln):
 
 def touch():
     os.makedirs(os.path.expanduser('~') + '/.mploop', exist_ok = True)
-    Path(os.path.expanduser('~') + '/.mploop/db.txt').touch()
-    Path(os.path.expanduser('~') + '/.mploop/past.txt').touch()
+    with open(os.path.expanduser('~') + '/.mploop/db.txt', 'a'):
+        pass
+    with open(os.path.expanduser('~') + '/.mploop/past.txt', 'a'):
+        pass
 
 def get_gain(ln):
     mimetype=subprocess.run(["file", "-b", "--mime-type", "--", ln], capture_output=True).stdout.decode("us-ascii")
