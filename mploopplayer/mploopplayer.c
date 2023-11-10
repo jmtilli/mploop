@@ -830,63 +830,92 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 	if (adecctx->channel_layout == 0 && adecctx->channels == 1) {
-		chcount = 1;
+		//chcount = 1;
+		chcount = adecctx->channels;
 	} else if (adecctx->channel_layout == 0 && adecctx->channels == 2) {
-		chcount = 2;
+		//chcount = 2;
+		chcount = adecctx->channels;
 	} else if (adecctx->channel_layout == AV_CH_LAYOUT_MONO) {
-		chcount = 1;
+		//chcount = 1;
+		chcount = adecctx->channels;
 	} else if (adecctx->channel_layout == AV_CH_LAYOUT_STEREO) {
-		chcount = 2;
+		//chcount = 2;
+		chcount = adecctx->channels;
 	} else if (adecctx->channel_layout == AV_CH_LAYOUT_2POINT1) {
-		chcount = 3;
+		//chcount = 3;
+		chcount = adecctx->channels;
 	} else if (adecctx->channel_layout == AV_CH_LAYOUT_2_1) {
-		chcount = 3;
+		//chcount = 3;
+		chcount = adecctx->channels;
 	} else if (adecctx->channel_layout == AV_CH_LAYOUT_SURROUND) {
-		chcount = 3;
+		//chcount = 3;
+		chcount = adecctx->channels;
 	} else if (adecctx->channel_layout == AV_CH_LAYOUT_3POINT1) {
-		chcount = 4;
+		//chcount = 4;
+		chcount = adecctx->channels;
 	} else if (adecctx->channel_layout == AV_CH_LAYOUT_4POINT0) {
-		chcount = 4;
+		//chcount = 4;
+		chcount = adecctx->channels;
 	} else if (adecctx->channel_layout == AV_CH_LAYOUT_4POINT1) {
-		chcount = 5;
+		//chcount = 5;
+		chcount = adecctx->channels;
 	} else if (adecctx->channel_layout == AV_CH_LAYOUT_2_2) {
-		chcount = 4;
+		//chcount = 4;
+		chcount = adecctx->channels;
 	} else if (adecctx->channel_layout == AV_CH_LAYOUT_QUAD) {
-		chcount = 4;
+		//chcount = 4;
+		chcount = adecctx->channels;
 	} else if (adecctx->channel_layout == AV_CH_LAYOUT_5POINT0) {
-		chcount = 5;
+		//chcount = 5;
+		chcount = adecctx->channels;
 	} else if (adecctx->channel_layout == AV_CH_LAYOUT_5POINT1) {
-		chcount = 6;
+		//chcount = 6;
+		chcount = adecctx->channels;
 	} else if (adecctx->channel_layout == AV_CH_LAYOUT_5POINT0_BACK) {
-		chcount = 5;
+		//chcount = 5;
+		chcount = adecctx->channels;
 	} else if (adecctx->channel_layout == AV_CH_LAYOUT_5POINT1_BACK) {
-		chcount = 6;
+		//chcount = 6;
+		chcount = adecctx->channels;
 	} else if (adecctx->channel_layout == AV_CH_LAYOUT_6POINT0) {
-		chcount = 6;
+		//chcount = 6;
+		chcount = adecctx->channels;
 	} else if (adecctx->channel_layout == AV_CH_LAYOUT_6POINT0_FRONT) {
-		chcount = 6;
+		//chcount = 6;
+		chcount = adecctx->channels;
 	} else if (adecctx->channel_layout == AV_CH_LAYOUT_HEXAGONAL) {
-		chcount = 6;
+		//chcount = 6;
+		chcount = adecctx->channels;
 	} else if (adecctx->channel_layout == AV_CH_LAYOUT_6POINT1) {
-		chcount = 7;
+		//chcount = 7;
+		chcount = adecctx->channels;
 	} else if (adecctx->channel_layout == AV_CH_LAYOUT_6POINT1_BACK) {
-		chcount = 7;
+		//chcount = 7;
+		chcount = adecctx->channels;
 	} else if (adecctx->channel_layout == AV_CH_LAYOUT_6POINT1_FRONT) {
-		chcount = 7;
+		//chcount = 7;
+		chcount = adecctx->channels;
 	} else if (adecctx->channel_layout == AV_CH_LAYOUT_7POINT0) {
-		chcount = 7;
+		//chcount = 7;
+		chcount = adecctx->channels;
 	} else if (adecctx->channel_layout == AV_CH_LAYOUT_7POINT0_FRONT) {
-		chcount = 7;
+		//chcount = 7;
+		chcount = adecctx->channels;
 	} else if (adecctx->channel_layout == AV_CH_LAYOUT_7POINT1) {
-		chcount = 8;
+		//chcount = 8;
+		chcount = adecctx->channels;
 	} else if (adecctx->channel_layout == AV_CH_LAYOUT_7POINT1_WIDE) {
-		chcount = 8;
+		//chcount = 8;
+		chcount = adecctx->channels;
 	} else if (adecctx->channel_layout == AV_CH_LAYOUT_7POINT1_WIDE_BACK) {
-		chcount = 8;
+		//chcount = 8;
+		chcount = adecctx->channels;
 	} else if (adecctx->channel_layout == AV_CH_LAYOUT_OCTAGONAL) {
-		chcount = 8;
+		//chcount = 8;
+		chcount = adecctx->channels;
 	} else if (adecctx->channel_layout == AV_CH_LAYOUT_STEREO_DOWNMIX) {
-		chcount = 2;
+		//chcount = 2;
+		chcount = adecctx->channels;
 	} else {
 		fprintf(stderr, "Unsupported channel conf %lld\n", (long long)adecctx->channel_layout);
 		if (adecctx->channels >= 2) {
