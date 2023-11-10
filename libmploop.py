@@ -98,7 +98,15 @@ def clear_stdin():
                         break
                     else:
                         seen_input = True
-            except OSError as e:
+            except IOError as e: # Python 2
+                if e.errno == errno.EAGAIN or e.errno == errno.EWOULDBLOCK:
+                    # Just in case stdin and stdout are both the same fd
+                    termios.tcsetattr(sys.stdin, termios.TCSANOW, old_settings)
+                    fcntl.fcntl(sys.stdin, fcntl.F_SETFL, old_flags)
+                    break
+                else:
+                    raise e
+            except OSError as e: # Python 3
                 if e.args[0] == errno.EAGAIN or e.args[0] == errno.EWOULDBLOCK:
                     # Just in case stdin and stdout are both the same fd
                     termios.tcsetattr(sys.stdin, termios.TCSANOW, old_settings)
