@@ -3,16 +3,11 @@ from __future__ import print_function
 from __future__ import division
 import os
 import sys
-import re
-import fcntl
 import time
-import io
 import socket
 import subprocess
 import termios
 import select
-import fcntl
-import errno
 import libmploop
 
 libmploop.touch()
