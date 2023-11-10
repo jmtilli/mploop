@@ -889,8 +889,13 @@ int main(int argc, char **argv)
 		chcount = 2;
 	} else {
 		fprintf(stderr, "Unsupported channel conf %lld\n", (long long)adecctx->channel_layout);
-		handler_impl();
-		exit(1);
+		if (adecctx->channels >= 2) {
+			fprintf(stderr, "Guessing first two channels are left and right");
+			chcount = adecctx->channels;
+		} else {
+			handler_impl();
+			exit(1);
+		}
 	}
 	data_size = av_get_bytes_per_sample(adecctx->sample_fmt);
 	if (data_size < 0 || (data_size != 1 && data_size != 2 && data_size != 4 && data_size != 8)) {
