@@ -825,7 +825,11 @@ int main(int argc, char **argv)
 		handler_impl();
 		exit(1);
 	}
-	if (adecctx->channel_layout == AV_CH_LAYOUT_MONO) {
+	if (adecctx->channel_layout == 0 && adecctx->channels == 1) {
+		chcount = 1;
+	} else if (adecctx->channel_layout == 0 && adecctx->channels == 2) {
+		chcount = 2;
+	} else if (adecctx->channel_layout == AV_CH_LAYOUT_MONO) {
 		chcount = 1;
 	} else if (adecctx->channel_layout == AV_CH_LAYOUT_STEREO) {
 		chcount = 2;
