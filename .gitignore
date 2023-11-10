@@ -1,2 +1,3 @@
 /.stir.db
 /__pycache__/
+*.pyc

@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
+from __future__ import print_function
+from __future__ import division
 import os
 import re
 import fcntl
 import time
-import io
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
 import sys
 import subprocess
 import tempfile
@@ -15,7 +20,7 @@ if len(sys.argv) != 1:
     print("Usage: vimp")
     sys.exit(1)
 
-sio = io.StringIO()
+sio = StringIO()
 path = tempfile.mkstemp()[1]
 editor = 'vi'
 if os.getenv('VISUAL', '') != '':
@@ -33,7 +38,8 @@ with libmploop.DbLock() as lck:
             idx += 1
     with open(path, "w") as f:
         f.write(sio.getvalue())
-    subprocess.run([editor, "--", path])
+    proc = subprocess.Popen([editor, "--", path])
+    proc.wait()
     contents = []
     with open(path, "r") as f:
         idx = 0

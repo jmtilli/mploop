@@ -1,4 +1,7 @@
+from __future__ import print_function
+from __future__ import division
 import os
+import re
 import sys
 import fcntl
 import termios
@@ -6,7 +9,16 @@ import time
 import subprocess
 import select
 import socket
-import io
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
+import errno
+
+try:
+    error_type = FileNotFoundError
+except NameError:
+    error_type = OSError
 
 mploopplayer = os.path.dirname(os.path.realpath(sys.argv[0])) + '/mploopplayer/mploopplayer'
 if not os.access(mploopplayer, os.X_OK):
@@ -40,7 +52,7 @@ def send_mploop_command(cmd, mplayercmd=None):
             sock.close()
 
 def unescape(x):
-    res = io.StringIO()
+    res = StringIO()
     escape = False
     for ch in x:
         if escape:
@@ -137,7 +149,10 @@ class DbLock(object):
         os.close(self.mainlck)
 
 def get_mp3_gain(ln):
-    mimetype=subprocess.run(["file", "-b", "--mime-type", "--", ln], capture_output=True).stdout.decode("us-ascii")
+    proc=subprocess.Popen(["file", "-b", "--mime-type", "--", ln], stdout=subprocess.PIPE)
+    out,err = proc.communicate()
+    proc.wait()
+    mimetype = out.decode("us-ascii").split("\n")
     trackgain_db = 0.0
     albumgain_db = None
     comments = []
@@ -149,7 +164,10 @@ def get_mp3_gain(ln):
             if ln2 and ln2[0] == '-':
                 ln2 = './' + ln2
             newlinecnt = ln2.count('\n')
-            out = subprocess.run(["id3v2", "-l", ln2], capture_output=True).stdout.decode("utf-8").split("\n")
+            proc = subprocess.Popen(["id3v2", "-l", ln2], stdout=subprocess.PIPE)
+            out,err = proc.communicate()
+            proc.wait()
+            out = out.decode("utf-8").split("\n")
             firstprocess = False
             newlineseen = 0
             secondprocess = False
@@ -231,11 +249,15 @@ def get_mp3_gain(ln):
                 rem = re.match("^TCON \\([^:]*\\): (.*)$", line)
                 if rem:
                     comments.append(("GENRE", rem.group(1)))
-        except FileNotFoundError:
-            pass
+        except error_type:
+            if e.errno != errno.ENOENT:
+                raise
         if comments == []:
             try:
-                out = subprocess.run(["id3tool", "--", ln], capture_output=True).stdout.decode("utf-8").split("\n")
+                proc = subprocess.Popen(["id3tool", "--", ln], stdout=subprocess.PIPE)
+                out,err = proc.communicate()
+                proc.wait()
+                out = out.decode("utf-8").split("\n")
                 for line in out[1:]:
                     rem = re.match("^Song Title:\t(.*)$", line)
                     if rem:
@@ -255,11 +277,17 @@ def get_mp3_gain(ln):
                     rem = re.match("^Genre:\t\t(.*)$", line)
                     if rem:
                         comments.append(("GENRE", rem.group(1)))
-            except FileNotFoundError:
-                pass
+            except error_type:
+                if e.errno != errno.ENOENT:
+                    raise
         try:
-            out = subprocess.run(["mp3gain", "-s", "c", "--", ln], capture_output=True).stdout.decode("utf-8").split("\n")
-        except FileNotFoundError:
+            proc = subprocess.Popen(["mp3gain", "-s", "c", "--", ln], stdout=subprocess.PIPE)
+            out,err = proc.communicate()
+            proc.wait()
+            out = out.decode("utf-8").split("\n")
+        except error_type:
+            if e.errno != errno.ENOENT:
+                raise
             return (0.0, comments)
         for line in out[1:]:
             if re.match("^Recommended \"Track\" dB change: [-+]?[0-9]+\.[0-9]+$", line):
@@ -279,7 +307,10 @@ def get_mp3_gain(ln):
     return (trackgain_db, comments)
 
 def get_flac_gain(ln):
-    mimetype=subprocess.run(["file", "-b", "--mime-type", "--", ln], capture_output=True).stdout.decode("us-ascii")
+    proc=subprocess.Popen(["file", "-b", "--mime-type", "--", ln], stdout=subprocess.PIPE)
+    out,err = proc.communicate()
+    proc.wait()
+    mimetype = out.decode("us-ascii")
     magic_ref = 89.0
     ref = 89.0
     r128trackgain_db = None
@@ -291,8 +322,13 @@ def get_flac_gain(ln):
         mimetype = mimetype[:-1]
     if mimetype == "audio/flac":
         try:
-            out = subprocess.run(["metaflac", "--list", "--block-type=VORBIS_COMMENT", "--", ln], capture_output=True).stdout.decode("utf-8").split("\n")
-        except FileNotFoundError:
+            proc = subprocess.Popen(["metaflac", "--list", "--block-type=VORBIS_COMMENT", "--", ln], stdout=subprocess.PIPE)
+            out,err = proc.communicate()
+            proc.wait()
+            out = out.decode("utf-8").split("\n")
+        except error_type:
+            if e.errno != errno.ENOENT:
+                raise
             return (0.0, [])
         for out1 in out:
             if out1[:12] == "    comment[":
@@ -345,7 +381,10 @@ def get_opusinfo(ln):
     result = []
     found = False
     try:
-        out = subprocess.run(["opusinfo", "--", ln], capture_output=True).stdout.decode("utf-8").split("\n")
+        proc = subprocess.Popen(["opusinfo", "--", ln], stdout=subprocess.PIPE)
+        out,err = proc.communicate()
+        proc.wait()
+        out = out.decode("utf-8").split("\n")
         for out1 in out:
             if out1 == "User comments section follows...":
                 found = True
@@ -362,18 +401,27 @@ def get_opusinfo(ln):
         if result == []:
             return (is_opus, [""])
         return (is_opus, result)
-    except FileNotFoundError:
+    except error_type:
+        if e.errno != errno.ENOENT:
+            raise
         return (None, [""])
 
 def touch():
-    os.makedirs(os.path.expanduser('~') + '/.mploop', exist_ok = True)
+    try:
+        os.makedirs(os.path.expanduser('~') + '/.mploop')
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
     with open(os.path.expanduser('~') + '/.mploop/db.txt', 'a'):
         pass
     with open(os.path.expanduser('~') + '/.mploop/past.txt', 'a'):
         pass
 
 def get_gain(ln):
-    mimetype=subprocess.run(["file", "-b", "--mime-type", "--", ln], capture_output=True).stdout.decode("us-ascii")
+    proc=subprocess.Popen(["file", "-b", "--mime-type", "--", ln], stdout=subprocess.PIPE)
+    out,err = proc.communicate()
+    proc.wait()
+    mimetype = out.decode("us-ascii")
     r128trackgain_db = None
     r128albumgain_db = None
     magic_ref = 89.0
@@ -395,14 +443,23 @@ def get_gain(ln):
             try:
                 if is_opus == None:
                     is_opus = False
-                    out = subprocess.run(["opustags", "--", ln], capture_output=True).stdout.decode("utf-8").split("\n")
+                    proc = subprocess.Popen(["opustags", "--", ln], stdout=subprocess.PIPE)
+                    out,err = proc.communicate()
+                    proc.wait()
+                    out = out.decode("utf-8").split("\n")
                     if out != [""]:
                         is_opus = True
-            except FileNotFoundError:
-                pass
+            except error_type as e:
+                if e.errno != errno.ENOENT:
+                    raise
             if out == [""]:
-                out = subprocess.run(["vorbiscomment", "--", ln], capture_output=True).stdout.decode("utf-8").split("\n")
-        except FileNotFoundError:
+                proc = subprocess.Popen(["vorbiscomment", "--", ln], stdout=subprocess.PIPE)
+                out,err = proc.communicate()
+                proc.wait()
+                out = out.decode("utf-8").split("\n")
+        except error_type:
+            if e.errno != errno.ENOENT:
+                raise
             return (0.0, [])
         for out1 in out:
             if out1 == '':

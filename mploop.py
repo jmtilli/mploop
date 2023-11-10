@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from __future__ import print_function
+from __future__ import division
 import os
 import sys
 import re
@@ -87,7 +89,10 @@ try:
             v = comment[1]
             print(pretty + ' ' + v)
         with open(os.path.expanduser('~') + '/.mploop/np.txt', "w") as f:
-            f.write("FILE=" + rawln + '\n' + '\n'.join(c[0] + "=" + c[1] for c in comments) + '\n')
+            if hasattr(rawln, "decode"): # Python 2
+                f.write(("FILE=" + rawln.decode("utf-8") + '\n' + '\n'.join(c[0] + "=" + c[1] for c in comments) + '\n').encode("utf-8"))
+            else: # Python 3
+                f.write("FILE=" + rawln + '\n' + '\n'.join(c[0] + "=" + c[1] for c in comments) + '\n')
         toclear=True
         print(80*"-")
         if libmploop.mploopplayer:
