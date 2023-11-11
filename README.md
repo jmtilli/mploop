@@ -8,15 +8,23 @@ a custom included music player as the tool for playing music.
 All of the songs are played from queue in the order they are in the queue.
 
 The user interface is simply a set of scripts managing the queue from a Unix
-shell.
+shell, and a set of scripts controlling the player.
 
-The scripts are:
+The scripts for managing the queue are:
 
 * mpq for listing queue and enqueuing new songs
 * mprm for removing individual items from the queue
 * mpclear for clearing the entire queue
 * mpshuffle for shuffling the entire queue
 * vimp for more complex editing of the queue, such as targeted order changes
+
+The scripts controlling the player are:
+
+* mpprev for jumping to the previous song or N songs backwards
+* mpnext for jumping to the next song or N songs forwards
+* mpplaypayse for toggling between playing and paused states
+* mprewind for rewinding back to the beginning of the current song
+* mpseek for seeking back/forwards the specified number of seconds
 
 ## Supported file formats
 
