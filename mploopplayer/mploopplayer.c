@@ -341,6 +341,12 @@ void handle_chars(int ch)
 	if (ch == '?') {
 		seeks = INT_MIN/2;
 	}
+	if (ch == '%') {
+		seeks -= 1;
+	}
+	if (ch == '&') {
+		seeks += 1;
+	}
 	if (ch == EXT_UP) {
 		seeks += 60;
 		//printf("\n\nUP\n\n");
