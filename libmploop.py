@@ -190,6 +190,18 @@ def get_mp4_gain(ln):
                 rem = re.match("^Atom \"\u00a9enc\" contains: (.*)$", line)
                 if rem:
                     comments.append(("ENCODED-BY", rem.group(1)))
+                rem = re.match("^Atom \"----\" \\[com.apple.iTunes;replaygain_track_gain\\] contains: (.*)$", line)
+                if rem:
+                    try:
+                        trackgain_db = float(rem.group(1)) + offset
+                    except:
+                        pass
+                rem = re.match("^Atom \"----\" \\[com.apple.iTunes;replaygain_album_gain\\] contains: (.*)$", line)
+                if rem:
+                    try:
+                        albumgain_db = float(rem.group(1)) + offset
+                    except:
+                        pass
         except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
