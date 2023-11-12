@@ -15,13 +15,16 @@ libmploop.touch()
 
 shuffle = False
 insert = False
+urlmode = False
 
-opts, args = getopt.getopt(sys.argv[1:], "si")
+opts, args = getopt.getopt(sys.argv[1:], "siu")
 for o, a in opts:
     if o == '-s':
         shuffle = True
     elif o == '-i':
         insert = True
+    elif o == '-u':
+        urlmode = True
     else:
         assert False, "unhandled option"
 
@@ -39,8 +42,103 @@ if len(args) == 0:
 aps = []
 
 for fl in args:
-    ap = os.path.abspath(fl)
-    if not os.path.isfile(ap):
+    url = False
+    if urlmode:
+        flit = fl
+        lowfl = flit.lower()
+        # TODO gopher, gophers, rist
+        changed = True
+        while changed:
+            changed = False
+            if lowfl.startswith("hls+"):
+                flit = flit[4:]
+                url = True
+                changed = True
+            if lowfl.startswith("crypto+"):
+                flit = flit[7:]
+                url = True
+                changed = True
+            if lowfl.startswith("crypto:"):
+                flit = flit[7:]
+                url = True
+                changed = True
+            if lowfl.startswith("cache:"):
+                flit = flit[6:]
+                url = True
+                changed = True
+            if lowfl.startswith("async:"):
+                flit = flit[6:]
+                url = True
+                changed = True
+            if lowfl.startswith("subfile,,"):
+                flit = flit[9:]
+                url = True
+                changed = True
+            lowfl = flit.lower()
+        if lowfl.startswith("http://"):
+            url = True
+        elif lowfl.startswith("https://"):
+            url = True
+        elif lowfl.startswith("smb://"):
+            url = True
+        elif lowfl.startswith("amqp://"):
+            url = True
+        elif lowfl.startswith("async:"):
+            url = True
+        elif lowfl.startswith("concat:"):
+            url = True
+        elif lowfl.startswith("icecast://"):
+            url = True
+        elif lowfl.startswith("ipfs://"):
+            url = True
+        elif lowfl.startswith("mmst://"):
+            url = True
+        elif lowfl.startswith("mmsh://"):
+            url = True
+        elif lowfl.startswith("rtmp://"):
+            url = True
+        elif lowfl.startswith("rtmpe://"):
+            url = True
+        elif lowfl.startswith("rtmps://"):
+            url = True
+        elif lowfl.startswith("rtmpt://"):
+            url = True
+        elif lowfl.startswith("rtmpte://"):
+            url = True
+        elif lowfl.startswith("rtmpts://"):
+            url = True
+        elif lowfl.startswith("sftp://"):
+            url = True
+        elif lowfl.startswith("rtp://"):
+            url = True
+        elif lowfl.startswith("rtsp://"):
+            url = True
+        elif lowfl.startswith("sap://"):
+            url = True
+        elif lowfl.startswith("sctp://"):
+            url = True
+        elif lowfl.startswith("srt://"):
+            url = True
+        elif lowfl.startswith("srtp://"):
+            url = True
+        elif lowfl.startswith("tcp://"):
+            url = True
+        elif lowfl.startswith("tls://"):
+            url = True
+        elif lowfl.startswith("udp://"):
+            url = True
+        elif lowfl.startswith("unix://"):
+            url = True
+        elif lowfl.startswith("zmq:tcp://"):
+            url = True
+        elif lowfl.startswith("file:"):
+            if not url:
+                fl = flit[5:]
+    if url:
+        ap = fl
+    else:
+        ap = os.path.abspath(fl)
+    if not url and not os.path.isfile(ap):
         print(fl + " is not file")
         sys.exit(1)
     aps.append(libmploop.escape(ap))

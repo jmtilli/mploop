@@ -25,7 +25,6 @@ libmploop.touch()
 # - opusinfo or opustags
 # - AtomicParsley
 
-offset = 6.0
 offset2 = 6.0
 mploopplayer_extraoffset = 0.0
 
@@ -93,7 +92,10 @@ try:
         toclear=True
         print(80*"-")
         if libmploop.mploopplayer:
-            proc = subprocess.Popen([libmploop.mploopplayer, "-s", libmploop.sockexpanded, "-g", str(gain-offset2-mploopplayer_extraoffset), "--", ln])
+            urlargs = []
+            if ln and ln[0] != '/':
+                urlargs = ["-u"]
+            proc = subprocess.Popen([libmploop.mploopplayer] + urlargs + ["-s", libmploop.sockexpanded, "-g", str(gain-offset2-mploopplayer_extraoffset), "--", ln])
             with open(libmploop.mploopplayerpidexpanded, 'w') as f:
                 f.write(str(proc.pid) + '\n')
             proc.wait()
