@@ -147,7 +147,7 @@ def get_mp3_gain(ln):
     proc=subprocess.Popen(["file", "-b", "--mime-type", "--", ln], stdout=subprocess.PIPE)
     out,err = proc.communicate()
     proc.wait()
-    mimetype = out.decode("us-ascii").split("\n")
+    mimetype = out.decode("us-ascii")
     trackgain_db = 0.0
     albumgain_db = None
     comments = []
