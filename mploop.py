@@ -9,6 +9,7 @@ import subprocess
 import termios
 import select
 import libmploop
+import errno
 
 libmploop.touch()
 
@@ -102,7 +103,9 @@ try:
             sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             try:
                 os.unlink(libmploop.mplayersockexpanded)
-            except FileNotFoundError:
+            except OSError as e:
+                if e.errno != errno.ENOENT:
+                    raise
                 pass
             sock.bind(libmploop.mplayersockexpanded)
             sock.listen(16)
