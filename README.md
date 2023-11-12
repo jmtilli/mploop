@@ -37,9 +37,9 @@ support happens via libavformat and libavcodec, so the format support is good
 no matter which implementation is used.
 
 However, metadata support for different formats is more limited. ReplayGain is
-supported for only Ogg Vorbis, Opus, FLAC and MP3. Also comment tags are
-supported for the same formats, and MP3 ID3 tags are automatically converted to
-Vorbis comments.
+supported for only Ogg Vorbis, Opus, FLAC, MP3 and MP4 (AAC). Also comment tags
+are supported for the same formats, and MP3 ID3 tags and MP4 tags are
+automatically converted to Vorbis comments.
 
 ## Philosophy
 
