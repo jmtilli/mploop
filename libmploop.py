@@ -15,6 +15,8 @@ except ImportError:
     from io import StringIO
 import errno
 
+offset = 6.0
+
 mploopplayer = os.path.dirname(os.path.realpath(sys.argv[0])) + '/mploopplayer/mploopplayer'
 if not os.access(mploopplayer, os.X_OK):
     mploopplayer = None
