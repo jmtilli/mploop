@@ -106,16 +106,17 @@ are installed:
 
 ## How to install
 
-The installation is simply done by creating the following links:
+The installation is done by executing the script install.sh
 
 ```
-mkdir -p ~/.local/bin
-ln -s `pwd`/mpclear.py ~/.local/bin/mpclear
-ln -s `pwd`/mploop.py ~/.local/bin/mploop
-ln -s `pwd`/mpq.py ~/.local/bin/mpq
-ln -s `pwd`/mprm.py ~/.local/bin/mprm
-ln -s `pwd`/mpshuffle.py ~/.local/bin/mpshuffle
-ln -s `pwd`/vimp.py ~/.local/bin/vimp
+./install.sh
+```
+
+By default, it is installed to `~/.local/bin`. You can install into
+`/usr/local/bin` by:
+
+```
+./install.sh /usr/local
 ```
 
 By default, if you have not compiled mploopplayer, mploop uses MPlayer which
