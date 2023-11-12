@@ -41,6 +41,20 @@ supported for only Ogg Vorbis, Opus, FLAC, MP3 and MP4 (AAC). Also comment tags
 are supported for the same formats, and MP3 ID3 tags and MP4 tags are
 automatically converted to Vorbis comments.
 
+## Stream support
+
+Through MPlayer and libavformat that is used in MPloop's custom music player,
+you get a large variety of streaming protocols such as HTTP and RTP. However,
+since the tag and ReplayGain support in MPloop does not go through these
+mechanisms, but rather uses tools operating only on the local file system,
+all metadata including ReplayGain is lost when playing remote streams.
+
+To play a stream, use the argument `-u` to mpq. An example:
+
+```
+mpq -u https://upload.wikimedia.org/wikipedia/en/2/26/Europe_-_The_Final_Countdown.ogg
+```
+
 ## Philosophy
 
 MPloop has a certain philosophy behind it. Because music is not visual, playing
