@@ -143,6 +143,61 @@ class DbLock(object):
     def __exit__(self, *args):
         os.close(self.mainlck)
 
+def get_mp4_gain(ln):
+    proc=subprocess.Popen(["file", "-b", "--mime-type", "--", ln], stdout=subprocess.PIPE)
+    out,err = proc.communicate()
+    proc.wait()
+    mimetype = out.decode("us-ascii")
+    trackgain_db = 0.0
+    albumgain_db = None
+    comments = []
+    if mimetype != "" and mimetype[-1] == "\n":
+        mimetype = mimetype[:-1]
+    print(mimetype)
+    if mimetype == "video/mp4" or mimetype == "audio/mp4":
+        print("MIME MATCH")
+        try:
+            ln2 = ln
+            if ln2 and ln2[0] == '-':
+                ln2 = './' + ln2
+            newlinecnt = ln2.count('\n')
+            proc = subprocess.Popen(["AtomicParsley", ln2, "-t"], stdout=subprocess.PIPE)
+            out,err = proc.communicate()
+            proc.wait()
+            out = out.decode("utf-8").split("\n")
+            for line in out:
+                print(line)
+                rem = re.match("^Atom \"\u00a9ART\" contains: (.*)$", line)
+                if rem:
+                    comments.append(("ARTIST", rem.group(1)))
+                rem = re.match("^Atom \"\u00a9alb\" contains: (.*)$", line)
+                if rem:
+                    comments.append(("ALBUM", rem.group(1)))
+                rem = re.match("^Atom \"\u00a9nam\" contains: (.*)$", line)
+                if rem:
+                    comments.append(("TITLE", rem.group(1)))
+                rem = re.match("^Atom \"\u00a9gen\" contains: (.*)$", line)
+                if rem:
+                    comments.append(("GENRE", rem.group(1)))
+                rem = re.match("^Atom \"trkn\" contains: (.*)$", line)
+                if rem:
+                    comments.append(("TRACKNUMBER", rem.group(1)))
+                rem = re.match("^Atom \"disk\" contains: (.*)$", line)
+                if rem:
+                    comments.append(("DISCNUMBER", rem.group(1)))
+                rem = re.match("^Atom \"\u00a9day\" contains: (.*)$", line)
+                if rem:
+                    comments.append(("YEAR", rem.group(1)))
+                rem = re.match("^Atom \"\u00a9enc\" contains: (.*)$", line)
+                if rem:
+                    comments.append(("ENCODED-BY", rem.group(1)))
+        except OSError as e:
+            if e.errno != errno.ENOENT:
+                raise
+    if albumgain_db != None:
+        return (albumgain_db, comments)
+    return (trackgain_db, comments)
+
 def get_mp3_gain(ln):
     proc=subprocess.Popen(["file", "-b", "--mime-type", "--", ln], stdout=subprocess.PIPE)
     out,err = proc.communicate()
@@ -429,6 +484,8 @@ def get_gain(ln):
         mimetype = mimetype[:-1]
     if mimetype == "audio/flac":
         return get_flac_gain(ln)
+    elif mimetype == "video/mp4" or mimetype == "audio/mp4":
+        return get_mp4_gain(ln)
     elif mimetype == "audio/mpeg":
         return get_mp3_gain(ln)
     elif mimetype == "audio/ogg":
