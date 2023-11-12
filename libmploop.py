@@ -153,9 +153,7 @@ def get_mp4_gain(ln):
     comments = []
     if mimetype != "" and mimetype[-1] == "\n":
         mimetype = mimetype[:-1]
-    print(mimetype)
     if mimetype == "video/mp4" or mimetype == "audio/mp4":
-        print("MIME MATCH")
         try:
             ln2 = ln
             if ln2 and ln2[0] == '-':
@@ -166,7 +164,6 @@ def get_mp4_gain(ln):
             proc.wait()
             out = out.decode("utf-8").split("\n")
             for line in out:
-                print(line)
                 rem = re.match("^Atom \"\u00a9ART\" contains: (.*)$", line)
                 if rem:
                     comments.append(("ARTIST", rem.group(1)))
