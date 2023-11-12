@@ -65,7 +65,11 @@ try:
                 allpast = rawln + '\n' + ''.join(f.readlines())
             with open(libmploop.pastexpanded, 'w') as f:
                 f.write(allpast)
-        gain,comments = libmploop.get_gain(ln)
+        if ln and ln[0] == '/':
+            gain,comments = libmploop.get_gain(ln)
+        else:
+            gain = 0.0
+            comments = []
         if libmploop.clear_stdin():
             print("")
         print(80*"=")
