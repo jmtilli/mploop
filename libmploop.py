@@ -15,11 +15,6 @@ except ImportError:
     from io import StringIO
 import errno
 
-try:
-    error_type = FileNotFoundError
-except NameError:
-    error_type = OSError
-
 mploopplayer = os.path.dirname(os.path.realpath(sys.argv[0])) + '/mploopplayer/mploopplayer'
 if not os.access(mploopplayer, os.X_OK):
     mploopplayer = None
@@ -98,16 +93,8 @@ def clear_stdin():
                         break
                     else:
                         seen_input = True
-            except IOError as e: # Python 2
+            except IOError as e:
                 if e.errno == errno.EAGAIN or e.errno == errno.EWOULDBLOCK:
-                    # Just in case stdin and stdout are both the same fd
-                    termios.tcsetattr(sys.stdin, termios.TCSANOW, old_settings)
-                    fcntl.fcntl(sys.stdin, fcntl.F_SETFL, old_flags)
-                    break
-                else:
-                    raise e
-            except OSError as e: # Python 3
-                if e.args[0] == errno.EAGAIN or e.args[0] == errno.EWOULDBLOCK:
                     # Just in case stdin and stdout are both the same fd
                     termios.tcsetattr(sys.stdin, termios.TCSANOW, old_settings)
                     fcntl.fcntl(sys.stdin, fcntl.F_SETFL, old_flags)
@@ -257,7 +244,7 @@ def get_mp3_gain(ln):
                 rem = re.match("^TCON \\([^:]*\\): (.*)$", line)
                 if rem:
                     comments.append(("GENRE", rem.group(1)))
-        except error_type:
+        except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
         if comments == []:
@@ -285,7 +272,7 @@ def get_mp3_gain(ln):
                     rem = re.match("^Genre:\t\t(.*)$", line)
                     if rem:
                         comments.append(("GENRE", rem.group(1)))
-            except error_type:
+            except OSError as e:
                 if e.errno != errno.ENOENT:
                     raise
         try:
@@ -293,7 +280,7 @@ def get_mp3_gain(ln):
             out,err = proc.communicate()
             proc.wait()
             out = out.decode("utf-8").split("\n")
-        except error_type:
+        except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
             return (0.0, comments)
@@ -334,7 +321,7 @@ def get_flac_gain(ln):
             out,err = proc.communicate()
             proc.wait()
             out = out.decode("utf-8").split("\n")
-        except error_type:
+        except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
             return (0.0, [])
@@ -409,7 +396,7 @@ def get_opusinfo(ln):
         if result == []:
             return (is_opus, [""])
         return (is_opus, result)
-    except error_type:
+    except OSError as e:
         if e.errno != errno.ENOENT:
             raise
         return (None, [""])
@@ -457,7 +444,7 @@ def get_gain(ln):
                     out = out.decode("utf-8").split("\n")
                     if out != [""]:
                         is_opus = True
-            except error_type as e:
+            except OSError as e:
                 if e.errno != errno.ENOENT:
                     raise
             if out == [""]:
@@ -465,7 +452,7 @@ def get_gain(ln):
                 out,err = proc.communicate()
                 proc.wait()
                 out = out.decode("utf-8").split("\n")
-        except error_type:
+        except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
             return (0.0, [])
