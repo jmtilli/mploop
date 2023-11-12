@@ -23,6 +23,7 @@ libmploop.touch()
 # - metaflac
 # - vorbiscomment
 # - opusinfo or opustags
+# - AtomicParsley
 
 offset = 6.0
 offset2 = 6.0

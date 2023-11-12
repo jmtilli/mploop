@@ -88,6 +88,7 @@ are installed:
 * `metaflac`
 * `vorbiscomment`
 * `opusinfo` or `opustags` or both
+* `AtomicParsley`
 
 ## How to install
 
