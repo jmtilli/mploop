@@ -206,8 +206,8 @@ def get_mp4_gain(ln):
             if e.errno != errno.ENOENT:
                 raise
     if albumgain_db != None:
-        return (albumgain_db, comments)
-    return (trackgain_db, comments)
+        return (True, albumgain_db, comments)
+    return (True, trackgain_db, comments)
 
 def get_mp3_gain(ln):
     proc=subprocess.Popen(["file", "-b", "--mime-type", "--", ln], stdout=subprocess.PIPE)
@@ -342,14 +342,14 @@ def get_mp3_gain(ln):
                 if e.errno != errno.ENOENT:
                     raise
         try:
-            proc = subprocess.Popen(["mp3gain", "-s", "c", "--", ln], stdout=subprocess.PIPE)
+            proc = subprocess.Popen(["mp3gain", "-s", "c", ln2], stdout=subprocess.PIPE)
             out,err = proc.communicate()
             proc.wait()
             out = out.decode("utf-8").split("\n")
         except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
-            return (0.0, comments)
+            return (True, 0.0, comments)
         for line in out[1:]:
             if re.match("^Recommended \"Track\" dB change: [-+]?[0-9]+\.[0-9]+$", line):
                 numval = re.sub("^Recommended \"Track\" dB change: ", "", line)
@@ -364,8 +364,8 @@ def get_mp3_gain(ln):
                 except:
                     pass
     if albumgain_db != None:
-        return (albumgain_db, comments)
-    return (trackgain_db, comments)
+        return (True, albumgain_db, comments)
+    return (True, trackgain_db, comments)
 
 def get_flac_gain(ln):
     proc=subprocess.Popen(["file", "-b", "--mime-type", "--", ln], stdout=subprocess.PIPE)
@@ -390,7 +390,7 @@ def get_flac_gain(ln):
         except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
-            return (0.0, [])
+            return (True, 0.0, [])
         for out1 in out:
             if out1[:12] == "    comment[":
                 cval = re.sub("^    comment\\[[0-9]+\\]: ", "", out1)
@@ -430,12 +430,12 @@ def get_flac_gain(ln):
                 else:
                     comments.append((k,v))
     if r128albumgain_db != None:
-        return (r128albumgain_db, comments)
+        return (True, r128albumgain_db, comments)
     if r128trackgain_db != None:
-        return (r128trackgain_db, comments)
+        return (True, r128trackgain_db, comments)
     if albumgain_db != None:
-        return (albumgain_db + (magic_ref - ref), comments)
-    return (trackgain_db + (magic_ref - ref), comments)
+        return (True, albumgain_db + (magic_ref - ref), comments)
+    return (True, trackgain_db + (magic_ref - ref), comments)
 
 def get_opusinfo(ln):
     is_opus = False
@@ -494,12 +494,21 @@ def get_gain(ln):
     if mimetype != "" and mimetype[-1] == "\n":
         mimetype = mimetype[:-1]
     if mimetype == "audio/flac":
+        if mploopplayer:
+            return (False, 0.0, [])
         return get_flac_gain(ln)
     elif mimetype == "video/mp4" or mimetype == "audio/mp4":
+        if mploopplayer:
+            return (False, 0.0, [])
         return get_mp4_gain(ln)
     elif mimetype == "audio/mpeg":
+        if mploopplayer:
+            res = get_mp3_gain(ln)
+            return (True, res[1], [])
         return get_mp3_gain(ln)
     elif mimetype == "audio/ogg":
+        if mploopplayer:
+            return (False, 0.0, [])
         try:
             out = [""]
             is_opus, out = get_opusinfo(ln)
@@ -523,7 +532,7 @@ def get_gain(ln):
         except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
-            return (0.0, [])
+            return (True, 0.0, [])
         for out1 in out:
             if out1 == '':
                 continue
@@ -563,12 +572,12 @@ def get_gain(ln):
             else:
                 comments.append((k,v))
     if r128albumgain_db != None:
-        return (r128albumgain_db, comments)
+        return (True, r128albumgain_db, comments)
     if r128trackgain_db != None:
-        return (r128trackgain_db, comments)
+        return (True, r128trackgain_db, comments)
     if albumgain_db != None:
-        return (albumgain_db + (magic_ref - ref), comments)
-    return (trackgain_db + (magic_ref - ref), comments)
+        return (True, albumgain_db + (magic_ref - ref), comments)
+    return (True, trackgain_db + (magic_ref - ref), comments)
 
 def skip(cnt):
     if cnt == 0:

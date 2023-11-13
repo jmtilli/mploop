@@ -66,15 +66,17 @@ try:
             with open(libmploop.pastexpanded, 'w') as f:
                 f.write(allpast)
         if ln and ln[0] == '/':
-            gain,comments = libmploop.get_gain(ln)
+            hasgain,gain,comments = libmploop.get_gain(ln)
         else:
+            hasgain = False
             gain = 0.0
             comments = []
         if libmploop.clear_stdin():
             print("")
-        print(80*"=")
-        print("Applying gain:", gain-offset2)
-        print("File:", ln)
+        if not libmploop.mploopplayer:
+            print(80*"=")
+            print("Applying gain:", gain-offset2)
+            print("File:", ln)
         for comment in comments:
             k = comment[0]
             pretty = k
@@ -94,12 +96,16 @@ try:
             else: # Python 3
                 f.write("FILE=" + rawln + '\n' + '\n'.join(c[0] + "=" + c[1] for c in comments) + '\n')
         toclear=True
-        print(80*"-")
+        if not libmploop.mploopplayer:
+            print(80*"-")
         if libmploop.mploopplayer:
             urlargs = []
             if ln and ln[0] != '/':
                 urlargs = ["-u"]
-            proc = subprocess.Popen([libmploop.mploopplayer] + urlargs + ["-s", libmploop.sockexpanded, "-g", str(gain-offset2-mploopplayer_extraoffset), "--", ln])
+            if hasgain:
+                proc = subprocess.Popen([libmploop.mploopplayer] + urlargs + ["-s", libmploop.sockexpanded, "-g", str(gain-offset2-mploopplayer_extraoffset), "--", ln])
+            else:
+                proc = subprocess.Popen([libmploop.mploopplayer] + urlargs + ["-s", libmploop.sockexpanded, "-G", "-g", str(0.0-offset2-mploopplayer_extraoffset), "--", ln])
             with open(libmploop.mploopplayerpidexpanded, 'w') as f:
                 f.write(str(proc.pid) + '\n')
             proc.wait()

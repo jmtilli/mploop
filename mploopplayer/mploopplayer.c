@@ -8,6 +8,7 @@
 #include <libavutil/mem.h>
 #include <libavutil/timestamp.h>
 #include <libavutil/samplefmt.h>
+#include <libavutil/dict.h>
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <sys/time.h>
@@ -36,6 +37,7 @@ char volfilebuf[PATH_MAX+1];
 const char *volfile = NULL;
 AVFormatContext *avfctx = NULL;
 int aidx;
+int usegain = 0;
 
 void handler_impl(void)
 {
@@ -675,6 +677,348 @@ void usage(const char *argv0)
 	exit(1);
 }
 
+const char *langsuffixes[] = {
+	"aar", "abk", "ace", "ach", "ada", "ady", "afa", "afh", "afr", "ain",
+	"aka", "akk", "alb", "ale", "alg", "alt", "amh", "ang", "anp", "apa",
+	"ara", "arc", "arg", "arm", "arn", "arp", "art", "arw", "asm", "ast",
+	"ath", "aus", "ava", "ave", "awa", "aym", "aze", "bad", "bai", "bak",
+	"bal", "bam", "ban", "baq", "bas", "bat", "bej", "bel", "bem", "ben",
+	"ber", "bho", "bih", "bik", "bin", "bis", "bla", "bnt", "bod", "bos",
+	"bra", "bre", "btk", "bua", "bug", "bul", "bur", "byn", "cad", "cai",
+	"car", "cat", "cau", "ceb", "cel", "ces", "cha", "chb", "che", "chg",
+	"chi", "chk", "chm", "chn", "cho", "chp", "chr", "chu", "chv", "chy",
+	"cmc", "cnr", "cop", "cor", "cos", "cpe", "cpf", "cpp", "cre", "crh",
+	"crp", "csb", "cus", "cym", "cze", "dak", "dan", "dar", "day", "del",
+	"den", "deu", "dgr", "din", "div", "doi", "dra", "dsb", "dua", "dum",
+	"dut", "dyu", "dzo", "efi", "egy", "eka", "ell", "elx", "eng", "enm",
+	"epo", "est", "eus", "ewe", "ewo", "fan", "fao", "fas", "fat", "fij",
+	"fil", "fin", "fiu", "fon", "fra", "fre", "frm", "fro", "frr", "frs",
+	"fry", "ful", "fur", "gaa", "gay", "gba", "gem", "geo", "ger", "gez",
+	"gil", "gla", "gle", "glg", "glv", "gmh", "goh", "gon", "gor", "got",
+	"grb", "grc", "gre", "grn", "gsw", "guj", "gwi", "hai", "hat", "hau",
+	"haw", "heb", "her", "hil", "him", "hin", "hit", "hmn", "hmo", "hrv",
+	"hsb", "hun", "hup", "hye", "iba", "ibo", "ice", "ido", "iii", "ijo",
+	"iku", "ile", "ilo", "ina", "inc", "ind", "ine", "inh", "ipk", "ira",
+	"iro", "isl", "ita", "jav", "jbo", "jpn", "jpr", "jrb", "kaa", "kab",
+	"kac", "kal", "kam", "kan", "kar", "kas", "kat", "kau", "kaw", "kaz",
+	"kbd", "kha", "khi", "khm", "kho", "kik", "kin", "kir", "kmb", "kok",
+	"kom", "kon", "kor", "kos", "kpe", "krc", "krl", "kro", "kru", "kua",
+	"kum", "kur", "kut", "lad", "lah", "lam", "lao", "lat", "lav", "lez",
+	"lim", "lin", "lit", "lol", "loz", "ltz", "lua", "lub", "lug", "lui",
+	"lun", "luo", "lus", "mac", "mad", "mag", "mah", "mai", "mak", "mal",
+	"man", "mao", "map", "mar", "mas", "may", "mdf", "mdr", "men", "mga",
+	"mic", "min", "mis", "mkd", "mkh", "mlg", "mlt", "mnc", "mni", "mno",
+	"moh", "mon", "mos", "mri", "msa", "mul", "mun", "mus", "mwl", "mwr",
+	"mya", "myn", "myv", "nah", "nai", "nap", "nau", "nav", "nbl", "nde",
+	"ndo", "nds", "nep", "new", "nia", "nic", "niu", "nld", "nno", "nob",
+	"nog", "non", "nor", "nqo", "nso", "nub", "nwc", "nya", "nym", "nyn",
+	"nyo", "nzi", "oci", "oji", "ori", "orm", "osa", "oss", "ota", "oto",
+	"paa", "pag", "pal", "pam", "pan", "pap", "pau", "peo", "per", "phi",
+	"phn", "pli", "pol", "pon", "por", "pra", "pro", "pus", "que", "raj",
+	"rap", "rar", "roa", "roh", "rom", "ron", "rum", "run", "rup", "rus",
+	"sad", "sag", "sah", "sai", "sal", "sam", "san", "sas", "sat", "scn",
+	"sco", "sel", "sem", "sga", "sgn", "shn", "sid", "sin", "sio", "sit",
+	"sla", "slk", "slo", "slv", "sma", "sme", "smi", "smj", "smn", "smo",
+	"sms", "sna", "snd", "snk", "sog", "som", "son", "sot", "spa", "sqi",
+	"srd", "srn", "srp", "srr", "ssa", "ssw", "suk", "sun", "sus", "sux",
+	"swa", "swe", "syc", "syr", "tah", "tai", "tam", "tat", "tel", "tem",
+	"ter", "tet", "tgk", "tgl", "tha", "tib", "tig", "tir", "tiv", "tkl",
+	"tlh", "tli", "tmh", "tog", "ton", "tpi", "tsi", "tsn", "tso", "tuk",
+	"tum", "tup", "tur", "tut", "tvl", "twi", "tyv", "udm", "uga", "uig",
+	"ukr", "umb", "und", "urd", "uzb", "vai", "ven", "vie", "vol", "vot",
+	"wak", "wal", "war", "was", "wel", "wen", "wln", "wol", "xal", "xho",
+	"yao", "yap", "yid", "yor", "ypk", "zap", "zbl", "zen", "zgh", "zha",
+	"zho", "znd", "zul", "zun", "zxx", "zza",
+
+	// local languages:
+	"qaa", "qab", "qac", "qad", "qae", "qaf", "qag", "qah", "qai", "qaj",
+	"qak", "qal", "qam", "qan", "qao", "qap", "qaq", "qar", "qas", "qat",
+	"qau", "qav", "qaw", "qax", "qay", "qaz", "qba", "qbb", "qbc", "qbd",
+	"qbe", "qbf", "qbg", "qbh", "qbi", "qbj", "qbk", "qbl", "qbm", "qbn",
+	"qbo", "qbp", "qbq", "qbr", "qbs", "qbt", "qbu", "qbv", "qbw", "qbx",
+	"qby", "qbz", "qca", "qcb", "qcc", "qcd", "qce", "qcf", "qcg", "qch",
+	"qci", "qcj", "qck", "qcl", "qcm", "qcn", "qco", "qcp", "qcq", "qcr",
+	"qcs", "qct", "qcu", "qcv", "qcw", "qcx", "qcy", "qcz", "qda", "qdb",
+	"qdc", "qdd", "qde", "qdf", "qdg", "qdh", "qdi", "qdj", "qdk", "qdl",
+	"qdm", "qdn", "qdo", "qdp", "qdq", "qdr", "qds", "qdt", "qdu", "qdv",
+	"qdw", "qdx", "qdy", "qdz", "qea", "qeb", "qec", "qed", "qee", "qef",
+	"qeg", "qeh", "qei", "qej", "qek", "qel", "qem", "qen", "qeo", "qep",
+	"qeq", "qer", "qes", "qet", "qeu", "qev", "qew", "qex", "qey", "qez",
+	"qfa", "qfb", "qfc", "qfd", "qfe", "qff", "qfg", "qfh", "qfi", "qfj",
+	"qfk", "qfl", "qfm", "qfn", "qfo", "qfp", "qfq", "qfr", "qfs", "qft",
+	"qfu", "qfv", "qfw", "qfx", "qfy", "qfz", "qga", "qgb", "qgc", "qgd",
+	"qge", "qgf", "qgg", "qgh", "qgi", "qgj", "qgk", "qgl", "qgm", "qgn",
+	"qgo", "qgp", "qgq", "qgr", "qgs", "qgt", "qgu", "qgv", "qgw", "qgx",
+	"qgy", "qgz", "qha", "qhb", "qhc", "qhd", "qhe", "qhf", "qhg", "qhh",
+	"qhi", "qhj", "qhk", "qhl", "qhm", "qhn", "qho", "qhp", "qhq", "qhr",
+	"qhs", "qht", "qhu", "qhv", "qhw", "qhx", "qhy", "qhz", "qia", "qib",
+	"qic", "qid", "qie", "qif", "qig", "qih", "qii", "qij", "qik", "qil",
+	"qim", "qin", "qio", "qip", "qiq", "qir", "qis", "qit", "qiu", "qiv",
+	"qiw", "qix", "qiy", "qiz", "qja", "qjb", "qjc", "qjd", "qje", "qjf",
+	"qjg", "qjh", "qji", "qjj", "qjk", "qjl", "qjm", "qjn", "qjo", "qjp",
+	"qjq", "qjr", "qjs", "qjt", "qju", "qjv", "qjw", "qjx", "qjy", "qjz",
+	"qka", "qkb", "qkc", "qkd", "qke", "qkf", "qkg", "qkh", "qki", "qkj",
+	"qkk", "qkl", "qkm", "qkn", "qko", "qkp", "qkq", "qkr", "qks", "qkt",
+	"qku", "qkv", "qkw", "qkx", "qky", "qkz", "qla", "qlb", "qlc", "qld",
+	"qle", "qlf", "qlg", "qlh", "qli", "qlj", "qlk", "qll", "qlm", "qln",
+	"qlo", "qlp", "qlq", "qlr", "qls", "qlt", "qlu", "qlv", "qlw", "qlx",
+	"qly", "qlz", "qma", "qmb", "qmc", "qmd", "qme", "qmf", "qmg", "qmh",
+	"qmi", "qmj", "qmk", "qml", "qmm", "qmn", "qmo", "qmp", "qmq", "qmr",
+	"qms", "qmt", "qmu", "qmv", "qmw", "qmx", "qmy", "qmz", "qna", "qnb",
+	"qnc", "qnd", "qne", "qnf", "qng", "qnh", "qni", "qnj", "qnk", "qnl",
+	"qnm", "qnn", "qno", "qnp", "qnq", "qnr", "qns", "qnt", "qnu", "qnv",
+	"qnw", "qnx", "qny", "qnz", "qoa", "qob", "qoc", "qod", "qoe", "qof",
+	"qog", "qoh", "qoi", "qoj", "qok", "qol", "qom", "qon", "qoo", "qop",
+	"qoq", "qor", "qos", "qot", "qou", "qov", "qow", "qox", "qoy", "qoz",
+	"qpa", "qpb", "qpc", "qpd", "qpe", "qpf", "qpg", "qph", "qpi", "qpj",
+	"qpk", "qpl", "qpm", "qpn", "qpo", "qpp", "qpq", "qpr", "qps", "qpt",
+	"qpu", "qpv", "qpw", "qpx", "qpy", "qpz", "qqa", "qqb", "qqc", "qqd",
+	"qqe", "qqf", "qqg", "qqh", "qqi", "qqj", "qqk", "qql", "qqm", "qqn",
+	"qqo", "qqp", "qqq", "qqr", "qqs", "qqt", "qqu", "qqv", "qqw", "qqx",
+	"qqy", "qqz", "qra", "qrb", "qrc", "qrd", "qre", "qrf", "qrg", "qrh",
+	"qri", "qrj", "qrk", "qrl", "qrm", "qrn", "qro", "qrp", "qrq", "qrr",
+	"qrs", "qrt", "qru", "qrv", "qrw", "qrx", "qry", "qrz", "qsa", "qsb",
+	"qsc", "qsd", "qse", "qsf", "qsg", "qsh", "qsi", "qsj", "qsk", "qsl",
+	"qsm", "qsn", "qso", "qsp", "qsq", "qsr", "qss", "qst", "qsu", "qsv",
+	"qsw", "qsx", "qsy", "qsz", "qta", "qtb", "qtc", "qtd", "qte", "qtf",
+	"qtg", "qth", "qti", "qtj", "qtk", "qtl", "qtm", "qtn", "qto", "qtp",
+	"qtq", "qtr", "qts", "qtt", "qtu", "qtv", "qtw", "qtx", "qty", "qtz",
+};
+
+int skip_key(const char *key)
+{
+	size_t i;
+	size_t sl = strlen(key);
+	if (sl >= 4 && key[sl-4] == '-')
+	{
+		for (i = 0; i < sizeof(langsuffixes)/sizeof(*langsuffixes); i++)
+		{
+			if (strcmp(key+sl-3, langsuffixes[i]) == 0)
+			{
+				return 1;
+			}
+		}
+	}
+	if (sl >= 5)
+	{
+		if (strcmp(key+sl-5, "-sort") == 0)
+		{
+			return 1;
+		}
+	}
+#if 0 // Covered by the previous if block
+	if (sl >= 9 && key[sl-9] == '-' && key[sl-5] == '-')
+	{
+		char langsort[10];
+		for (i = 0; i < sizeof(langsuffixes)/sizeof(*langsuffixes); i++)
+		{
+			if (snprintf(langsort, sizeof(langsort), "-%s-sort", langsuffixes[i]) >= (int)sizeof(langsort)) {
+				abort();
+			}
+			if (strcmp(key+sl-9, langsort) == 0)
+			{
+				return 1;
+			}
+		}
+	}
+#endif
+	return 0;
+}
+
+const double offset = 6.0;
+int has_albumgain = 0;
+int has_trackgain = 0;
+double albumgain = 0;
+double trackgain = 0;
+double magic_ref = 89;
+double ref = 89;
+
+const char *mangle_vorbiskey(const char *key, int *colon)
+{
+	const char *vorbiskey = key;
+	*colon = 1;
+	if (strcmp(key, "TRACKNUMBER") == 0) {
+		vorbiskey = "Track number";
+	}
+	else if (strcmp(key, "COPYRIGHT") == 0) {
+		vorbiskey = "Copyright";
+		*colon = 0;
+	}
+	else if (strcmp(key, "") == 0) {
+		vorbiskey = "Comment";
+	}
+	return vorbiskey;
+}
+
+const char *get_vorbiskey(const char *key, const char *value)
+{
+	const char *vorbiskey = key;
+	if (strcmp(key, "album_artist") == 0) {
+		vorbiskey = "ALBUMARTIST";
+	}
+	else if (strcmp(key, "track") == 0) {
+		vorbiskey = "TRACKNUMBER";
+	}
+	else if (strcmp(key, "disc") == 0) {
+		vorbiskey = "DISCNUMBER";
+	}
+	else if (strcmp(key, "comment") == 0) {
+		vorbiskey = "DESCRIPTION";
+	}
+	else if (strcmp(key, "album") == 0) {
+		vorbiskey = "ALBUM";
+	}
+	else if (strcmp(key, "artist") == 0) {
+		vorbiskey = "ARTIST";
+	}
+	else if (strcmp(key, "composer") == 0) {
+		vorbiskey = "COMPOSER";
+	}
+	else if (strcmp(key, "copyright") == 0) {
+		vorbiskey = "COPYRIGHT";
+	}
+	else if (strcmp(key, "creation_time") == 0) {
+		vorbiskey = "DATE";
+	}
+	else if (strcmp(key, "date") == 0) {
+		vorbiskey = "DATE";
+	}
+	else if (strcmp(key, "encoder") == 0) {
+		vorbiskey = "ENCODER";
+	}
+	else if (strcmp(key, "encoded_by") == 0) {
+		vorbiskey = "ENCODED-BY";
+	}
+	else if (strcmp(key, "filename") == 0) {
+		vorbiskey = "FILENAME"; // invented by me
+	}
+	else if (strcmp(key, "genre") == 0) {
+		vorbiskey = "GENRE";
+	}
+	else if (strcmp(key, "language") == 0) {
+		vorbiskey = "LANGUAGE"; // invention?
+	}
+	else if (strcmp(key, "performer") == 0) {
+		vorbiskey = "PERFORMER";
+	}
+	else if (strcmp(key, "publisher") == 0) {
+		vorbiskey = "PUBLISHER";
+	}
+	else if (strcmp(key, "service_name") == 0) {
+		vorbiskey = "SERVICENAME"; // invented by me
+	}
+	else if (strcmp(key, "service_provider") == 0) {
+		vorbiskey = "SERVICEPROVIDER"; // invented by me
+	}
+	else if (strcmp(key, "title") == 0) {
+		vorbiskey = "TITLE";
+	}
+	else if (strcmp(key, "variant_bitrate") == 0) {
+		vorbiskey = "VARIANTBITRATE"; // invented by me
+	}
+	else if (strcmp(key, "replaygain_album_gain") == 0) {
+		if (value)
+		{
+			if (has_albumgain != 128)
+			{
+				albumgain = atof(value) + offset;
+				has_albumgain = 1;
+			}
+		}
+		vorbiskey = NULL;
+	}
+	else if (strcmp(key, "replaygain_track_gain") == 0) {
+		if (value)
+		{
+			if (has_trackgain != 128)
+			{
+				trackgain = atof(value) + offset;
+			}
+		}
+		vorbiskey = NULL;
+	}
+	else if (strcmp(key, "R128_ALBUM_GAIN") == 0) {
+		if (value)
+		{
+			albumgain = atof(value) + offset;
+			has_albumgain = 128;
+		}
+		vorbiskey = NULL;
+	}
+	else if (strcmp(key, "R128_TRACK_GAIN") == 0) {
+		if (value)
+		{
+			trackgain = atof(value) + offset;
+			has_trackgain = 128;
+		}
+		vorbiskey = NULL;
+	}
+	else if (strcmp(key, "REPLAYGAIN_ALBUM_GAIN") == 0) {
+		if (value)
+		{
+			if (has_albumgain != 128)
+			{
+				albumgain = atof(value) + offset;
+				has_albumgain = 1;
+			}
+		}
+		vorbiskey = NULL;
+	}
+	else if (strcmp(key, "REPLAYGAIN_TRACK_GAIN") == 0) {
+		if (value)
+		{
+			if (has_trackgain != 128)
+			{
+				trackgain = atof(value) + offset;
+			}
+		}
+		vorbiskey = NULL;
+	}
+	else if (strcmp(key, "REPLAYGAIN_REFERENCE_LOUDNESS") == 0) {
+		if (value)
+		{
+			ref = atof(value);
+		}
+		vorbiskey = NULL;
+	}
+	else if (strcmp(key, "REPLAYGAIN_ALBUM_PEAK") == 0) {
+		vorbiskey = NULL;
+	}
+	else if (strcmp(key, "REPLAYGAIN_TRACK_PEAK") == 0) {
+		vorbiskey = NULL;
+	}
+	else if (strcmp(key, "replaygain_album_peak") == 0) {
+		vorbiskey = NULL;
+	}
+	else if (strcmp(key, "replaygain_track_peak") == 0) {
+		vorbiskey = NULL;
+	}
+	else if (strcmp(key, "replaygain_album_minmax") == 0) {
+		vorbiskey = NULL;
+	}
+	else if (strcmp(key, "replaygain_track_minmax") == 0) {
+		vorbiskey = NULL;
+	}
+	else if (strcmp(key, "major_brand") == 0) {
+		vorbiskey = NULL;
+	}
+	else if (strcmp(key, "minor_version") == 0) {
+		vorbiskey = NULL;
+	}
+	else if (strcmp(key, "compatible_brands") == 0) {
+		vorbiskey = NULL;
+	}
+	else if (strcmp(key, "handler_name") == 0) {
+		vorbiskey = NULL;
+	}
+	return vorbiskey;
+}
+// replaygain_track_gain, REPLAYGAIN_TRACK_GAIN, R128_TRACK_GAIN
+// replaygain_album_gain, REPLAYGAIN_ALBUM_GAIN, R128_ALBUM_GAIN
+// REPLAYGAIN_REFERENCE_LOUDNESS
+// skip: REPLAYGAIN_ALBUM_PEAK, REPLAYGAIN_TRACK_PEAK, replaygain_track_peak, replaygain_track_minmax, replaygain_album_peak, replaygain_album_minmax
+// others: convert to uppercase
+
 int main(int argc, char **argv)
 {
 	int ret;
@@ -696,7 +1040,7 @@ int main(int argc, char **argv)
 	AVStream *audio_stream;
 #endif
 
-	while ((opt = getopt(argc, argv, "us:g:")) != -1) {
+	while ((opt = getopt(argc, argv, "us:g:G")) != -1) {
 		switch (opt) {
 			case 'u':
 				urlmode = 1;
@@ -704,6 +1048,9 @@ int main(int argc, char **argv)
 			case 's':
 				sockarg = optarg;
 				usesock = 1;
+				break;
+			case 'G':
+				usegain = 1;
 				break;
 			case 'g':
 				if (!optarg)
@@ -813,6 +1160,84 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 	aidx = ret;
+	AVDictionary *whole_file_metadata = avfctx->metadata;
+	AVDictionary *stream_metadata = avfctx->streams[aidx]->metadata;
+	const AVDictionaryEntry *e = NULL;
+	e = NULL;
+	while ((e = av_dict_get(whole_file_metadata, "", e, AV_DICT_IGNORE_SUFFIX)) != NULL) {
+		get_vorbiskey(e->key, e->value);
+	}
+	e = NULL;
+	while ((e = av_dict_get(stream_metadata, "", e, AV_DICT_IGNORE_SUFFIX)) != NULL) {
+		get_vorbiskey(e->key, e->value);
+	}
+	printf("================================================================================\n");
+	if (usegain)
+	{
+		if (has_albumgain == 128) {
+			gain_db += albumgain;
+		} else if (has_trackgain == 128) {
+			gain_db += trackgain;
+		} else if (has_albumgain) {
+			gain_db += albumgain + (magic_ref - ref);
+		} else {
+			gain_db += trackgain + (magic_ref - ref);
+		}
+		printf("Applying gain: %.2f dB\n", gain_db);
+		volume_mul = powf(10.0, (gain_db+volume_db)/20.0);
+	} else {
+		printf("Applying gain: %.2f dB\n", gain_db);
+	}
+	printf("File: %s\n", argv[optind]);
+	e = NULL;
+	//printf("Whole file metadata\n");
+	while ((e = av_dict_get(whole_file_metadata, "", e, AV_DICT_IGNORE_SUFFIX)) != NULL) {
+		const char *vkey;
+		int colon;
+		if (skip_key(e->key) || get_vorbiskey(e->key, NULL) == NULL) {
+			continue;
+		}
+		vkey = get_vorbiskey(e->key, NULL);
+		vkey = mangle_vorbiskey(vkey, &colon);
+		if (*vkey) {
+			printf("%c", toupper(*vkey));
+			vkey++;
+		}
+		while (*vkey) {
+			printf("%c", tolower(*vkey));
+			vkey++;
+		}
+		if (colon) {
+			printf(":");
+		}
+		printf(" ");
+		printf("%s\n", e->value);
+	}
+	e = NULL;
+	//printf("Stream metadata\n");
+	while ((e = av_dict_get(stream_metadata, "", e, AV_DICT_IGNORE_SUFFIX)) != NULL) {
+		const char *vkey;
+		int colon;
+		if (skip_key(e->key) || get_vorbiskey(e->key, NULL) == NULL) {
+			continue;
+		}
+		vkey = get_vorbiskey(e->key, NULL);
+		vkey = mangle_vorbiskey(vkey, &colon);
+		if (*vkey) {
+			printf("%c", toupper(*vkey));
+			vkey++;
+		}
+		while (*vkey) {
+			printf("%c", tolower(*vkey));
+			vkey++;
+		}
+		if (colon) {
+			printf(":");
+		}
+		printf(" ");
+		printf("%s\n", e->value);
+	}
+	printf("--------------------------------------------------------------------------------\n");
 	dec = avcodec_find_decoder(avfctx->streams[aidx]->codecpar->codec_id);
 	if (!dec) {
 		fprintf(stderr, "File %s is probably not an audio file, can't find decoder\n", argv[optind]);
