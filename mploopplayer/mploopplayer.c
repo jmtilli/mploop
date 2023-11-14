@@ -9,6 +9,7 @@
 #include <libavutil/timestamp.h>
 #include <libavutil/samplefmt.h>
 #include <libavutil/dict.h>
+#include <libavutil/replaygain.h>
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <sys/time.h>
@@ -933,6 +934,7 @@ const char *get_vorbiskey(const char *key, const char *value)
 			if (has_trackgain != 128)
 			{
 				trackgain = atof(value) + offset;
+				has_trackgain = 1;
 			}
 		}
 		vorbiskey = NULL;
@@ -970,6 +972,7 @@ const char *get_vorbiskey(const char *key, const char *value)
 			if (has_trackgain != 128)
 			{
 				trackgain = atof(value) + offset;
+				has_trackgain = 1;
 			}
 		}
 		vorbiskey = NULL;
@@ -1174,14 +1177,29 @@ int main(int argc, char **argv)
 	printf("================================================================================\n");
 	if (usegain)
 	{
+		struct AVReplayGain *av_gain = NULL;
+		int size = 0;
 		if (has_albumgain == 128) {
 			gain_db += albumgain;
 		} else if (has_trackgain == 128) {
 			gain_db += trackgain;
 		} else if (has_albumgain) {
 			gain_db += albumgain + (magic_ref - ref);
-		} else {
+		} else if (has_trackgain) {
 			gain_db += trackgain + (magic_ref - ref);
+		} else {
+			av_gain = (AVReplayGain*)av_stream_get_side_data(avfctx->streams[aidx], AV_PKT_DATA_REPLAYGAIN, &size);
+			if (av_gain != NULL) {
+				if (size != sizeof(*av_gain)) {
+					fprintf(stderr, "Error: invalid ReplayGain data\n");
+				} else {
+					if (av_gain->album_gain != INT32_MIN) {
+						gain_db += av_gain->album_gain/(float)100000 + offset;
+					} else if (av_gain->track_gain != INT32_MIN) {
+						gain_db += av_gain->track_gain/(float)100000 + offset;
+					}
+				}
+			}
 		}
 		printf("Applying gain: %.2f dB\n", gain_db);
 		volume_mul = powf(10.0, (gain_db+volume_db)/20.0);
