@@ -920,9 +920,15 @@ const char *get_vorbiskey(const char *key, const char *value)
 	else if (strcmp(key, "replaygain_album_gain") == 0) {
 		if (value)
 		{
-			if (has_albumgain != 128)
+			char *endptr;
+			float tmp = strtof(value, &endptr);
+			if ((*endptr == '\0' ||
+			    strcmp(endptr, "dB") == 0 || strcmp(endptr, " dB") == 0 ||
+			    strcmp(endptr, "DB") == 0 || strcmp(endptr, " DB") == 0 ||
+			    strcmp(endptr, "db") == 0 || strcmp(endptr, " db") == 0) &&
+			    has_albumgain != 128)
 			{
-				albumgain = atof(value) + offset;
+				albumgain = tmp + offset;
 				has_albumgain = 1;
 			}
 		}
@@ -931,9 +937,15 @@ const char *get_vorbiskey(const char *key, const char *value)
 	else if (strcmp(key, "replaygain_track_gain") == 0) {
 		if (value)
 		{
-			if (has_trackgain != 128)
+			char *endptr;
+			float tmp = strtof(value, &endptr);
+			if ((*endptr == '\0' ||
+			    strcmp(endptr, "dB") == 0 || strcmp(endptr, " dB") == 0 ||
+			    strcmp(endptr, "DB") == 0 || strcmp(endptr, " DB") == 0 ||
+			    strcmp(endptr, "db") == 0 || strcmp(endptr, " db") == 0) &&
+			    has_trackgain != 128)
 			{
-				trackgain = atof(value) + offset;
+				trackgain = tmp + offset;
 				has_trackgain = 1;
 			}
 		}
@@ -942,25 +954,41 @@ const char *get_vorbiskey(const char *key, const char *value)
 	else if (strcmp(key, "R128_ALBUM_GAIN") == 0) {
 		if (value)
 		{
-			albumgain = atof(value) + offset;
-			has_albumgain = 128;
+			char *endptr;
+			float tmp = strtof(value, &endptr);
+			if (*endptr == '\0')
+			{
+				albumgain = tmp/256.0 + offset;
+				has_albumgain = 128;
+			}
 		}
 		vorbiskey = NULL;
 	}
 	else if (strcmp(key, "R128_TRACK_GAIN") == 0) {
 		if (value)
 		{
-			trackgain = atof(value) + offset;
-			has_trackgain = 128;
+			char *endptr;
+			float tmp = strtof(value, &endptr);
+			if (*endptr == '\0')
+			{
+				trackgain = tmp/256.0 + offset;
+				has_trackgain = 128;
+			}
 		}
 		vorbiskey = NULL;
 	}
 	else if (strcmp(key, "REPLAYGAIN_ALBUM_GAIN") == 0) {
 		if (value)
 		{
-			if (has_albumgain != 128)
+			char *endptr;
+			float tmp = strtof(value, &endptr);
+			if ((*endptr == '\0' ||
+			    strcmp(endptr, "dB") == 0 || strcmp(endptr, " dB") == 0 ||
+			    strcmp(endptr, "DB") == 0 || strcmp(endptr, " DB") == 0 ||
+			    strcmp(endptr, "db") == 0 || strcmp(endptr, " db") == 0) &&
+			    has_albumgain != 128)
 			{
-				albumgain = atof(value) + offset;
+				albumgain = tmp + offset;
 				has_albumgain = 1;
 			}
 		}
@@ -969,9 +997,15 @@ const char *get_vorbiskey(const char *key, const char *value)
 	else if (strcmp(key, "REPLAYGAIN_TRACK_GAIN") == 0) {
 		if (value)
 		{
-			if (has_trackgain != 128)
+			char *endptr;
+			float tmp = strtof(value, &endptr);
+			if ((*endptr == '\0' ||
+			    strcmp(endptr, "dB") == 0 || strcmp(endptr, " dB") == 0 ||
+			    strcmp(endptr, "DB") == 0 || strcmp(endptr, " DB") == 0 ||
+			    strcmp(endptr, "db") == 0 || strcmp(endptr, " db") == 0) &&
+			    has_trackgain != 128)
 			{
-				trackgain = atof(value) + offset;
+				trackgain = tmp + offset;
 				has_trackgain = 1;
 			}
 		}
@@ -980,14 +1014,30 @@ const char *get_vorbiskey(const char *key, const char *value)
 	else if (strcmp(key, "replaygain_reference_loudness") == 0) {
 		if (value)
 		{
-			ref = atof(value);
+			char *endptr;
+			float tmp = strtof(value, &endptr);
+			if (*endptr == '\0' ||
+			    strcmp(endptr, "dB") == 0 || strcmp(endptr, " dB") == 0 ||
+			    strcmp(endptr, "DB") == 0 || strcmp(endptr, " DB") == 0 ||
+			    strcmp(endptr, "db") == 0 || strcmp(endptr, " db") == 0)
+			{
+				ref = tmp;
+			}
 		}
 		vorbiskey = NULL;
 	}
 	else if (strcmp(key, "REPLAYGAIN_REFERENCE_LOUDNESS") == 0) {
 		if (value)
 		{
-			ref = atof(value);
+			char *endptr;
+			float tmp = strtof(value, &endptr);
+			if (*endptr == '\0' ||
+			    strcmp(endptr, "dB") == 0 || strcmp(endptr, " dB") == 0 ||
+			    strcmp(endptr, "DB") == 0 || strcmp(endptr, " DB") == 0 ||
+			    strcmp(endptr, "db") == 0 || strcmp(endptr, " db") == 0)
+			{
+				ref = tmp;
+			}
 		}
 		vorbiskey = NULL;
 	}
