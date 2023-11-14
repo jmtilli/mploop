@@ -977,11 +977,24 @@ const char *get_vorbiskey(const char *key, const char *value)
 		}
 		vorbiskey = NULL;
 	}
+	else if (strcmp(key, "replaygain_reference_loudness") == 0) {
+		if (value)
+		{
+			ref = atof(value);
+		}
+		vorbiskey = NULL;
+	}
 	else if (strcmp(key, "REPLAYGAIN_REFERENCE_LOUDNESS") == 0) {
 		if (value)
 		{
 			ref = atof(value);
 		}
+		vorbiskey = NULL;
+	}
+	else if (strcmp(key, "MP3GAIN_MINMAX") == 0) {
+		vorbiskey = NULL;
+	}
+	else if (strcmp(key, "MP3GAIN_ALBUM_MINMAX") == 0) {
 		vorbiskey = NULL;
 	}
 	else if (strcmp(key, "REPLAYGAIN_ALBUM_PEAK") == 0) {
