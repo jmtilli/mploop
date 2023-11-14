@@ -1201,6 +1201,7 @@ int main(int argc, char **argv)
 		} else if (has_trackgain) {
 			gain_db += trackgain + (magic_ref - ref);
 		} else {
+			// TODO add optional support for ReplayGain in APE tag
 			av_gain = (AVReplayGain*)av_stream_get_side_data(avfctx->streams[aidx], AV_PKT_DATA_REPLAYGAIN, &size);
 			if (av_gain != NULL) {
 				if (size != sizeof(*av_gain)) {
