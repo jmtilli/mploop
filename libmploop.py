@@ -213,6 +213,7 @@ def get_mp3_gain(ln):
     proc=subprocess.Popen(["file", "-b", "--mime-type", "--", ln], stdout=subprocess.PIPE)
     out,err = proc.communicate()
     proc.wait()
+    has_some_gain = False
     mimetype = out.decode("us-ascii")
     trackgain_db = 0.0
     albumgain_db = None
@@ -349,23 +350,49 @@ def get_mp3_gain(ln):
         except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
-            return (True, 0.0, comments)
+            return (has_some_gain, 0.0, comments)
         for line in out[1:]:
             if re.match("^Recommended \"Track\" dB change: [-+]?[0-9]+\.[0-9]+$", line):
                 numval = re.sub("^Recommended \"Track\" dB change: ", "", line)
                 try:
                     trackgain_db = float(numval) + offset
+                    has_some_gain = True
                 except:
                     pass
             elif re.match("^Recommended \"Album\" dB change: [-+]?[0-9]+\.[0-9]+$", line):
                 numval = re.sub("^Recommended \"Album\" dB change: ", "", line)
                 try:
                     albumgain_db = float(numval) + offset
+                    has_some_gain = True
+                except:
+                    pass
+        try: # Let ID3v2 tag overwrite APE tag info, so APE first, ID3v2 then
+            proc = subprocess.Popen(["mp3gain", "-s", "c", "-s", "i", ln2], stdout=subprocess.PIPE)
+            out,err = proc.communicate()
+            proc.wait()
+            out = out.decode("utf-8").split("\n")
+        except OSError as e:
+            if e.errno != errno.ENOENT:
+                raise
+            return (has_some_gain, 0.0, comments)
+        for line in out[1:]:
+            if re.match("^Recommended \"Track\" dB change: [-+]?[0-9]+\.[0-9]+$", line):
+                numval = re.sub("^Recommended \"Track\" dB change: ", "", line)
+                try:
+                    trackgain_db = float(numval) + offset
+                    has_some_gain = True
+                except:
+                    pass
+            elif re.match("^Recommended \"Album\" dB change: [-+]?[0-9]+\.[0-9]+$", line):
+                numval = re.sub("^Recommended \"Album\" dB change: ", "", line)
+                try:
+                    albumgain_db = float(numval) + offset
+                    has_some_gain = True
                 except:
                     pass
     if albumgain_db != None:
-        return (True, albumgain_db, comments)
-    return (True, trackgain_db, comments)
+        return (has_some_gain, albumgain_db, comments)
+    return (has_some_gain, trackgain_db, comments)
 
 def get_flac_gain(ln):
     proc=subprocess.Popen(["file", "-b", "--mime-type", "--", ln], stdout=subprocess.PIPE)
