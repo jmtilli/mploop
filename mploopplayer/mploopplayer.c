@@ -21,6 +21,8 @@
 #include <poll.h>
 #include <fcntl.h>
 
+int leftidx = -1;
+int rightidx = -1;
 SDL_AudioDeviceID audid;
 SDL_AudioSpec obtained;
 AVCodecContext *adecctx;
@@ -399,7 +401,8 @@ void handle_chars(int ch)
 void output_audio_frame(AVFrame *frame)
 {
 	int i;
-	int ch;
+	int chid;
+	int chmap[2] = {leftidx, rightidx};
 #if 0
 	size_t unpadded_linesize = frame->nb_samples * av_get_bytes_per_sample(frame->format);
 #endif
@@ -409,7 +412,8 @@ void output_audio_frame(AVFrame *frame)
 	fflush(stdout);
 	bufloc = 0;
 	for (i = 0; i < frame->nb_samples; i++) {
-		for (ch = 0; ch < (chcount>2 ? 2 : chcount); ch++) {
+		for (chid = 0; chid < (chcount>2 ? 2 : chcount); chid++) {
+			int ch = chmap[chid];
 			if (bufloc + data_size > (int)sizeof(buf)) {
 				fprintf(stderr, "Buffer size insufficient, very strange audio file\n");
 				handler_impl();
@@ -1346,6 +1350,35 @@ int main(int argc, char **argv)
 		handler_impl();
 		exit(1);
 	}
+//#if LIBAVFORMAT_VERSION_MAJOR > 59 || (LIBAVFORMAT_VERSION_MAJOR == 59 && LIBAVFORMAT_VERSION_MINOR >= 19)
+#if LIBAVCODEC_VERSION_MAJOR > 59 || (LIBAVCODEC_VERSION_MAJOR == 59 && LIBAVCODEC_VERSION_MINOR >= 24)
+	if (adecctx->ch_layout.nb_channels == 1) {
+		leftidx = 0;
+		rightidx = 0;
+		chcount = adecctx->ch_layout.nb_channels;
+	} else {
+		if (leftidx < 0) {
+			leftidx = av_channel_layout_index_from_channel(&adecctx->ch_layout, AV_CHAN_STEREO_LEFT);
+		}
+		if (leftidx < 0) {
+			leftidx = av_channel_layout_index_from_channel(&adecctx->ch_layout, AV_CHAN_FRONT_LEFT);
+		}
+		if (rightidx < 0) {
+			rightidx = av_channel_layout_index_from_channel(&adecctx->ch_layout, AV_CHAN_STEREO_RIGHT);
+		}
+		if (rightidx < 0) {
+			rightidx = av_channel_layout_index_from_channel(&adecctx->ch_layout, AV_CHAN_FRONT_RIGHT);
+		}
+		chcount = adecctx->ch_layout.nb_channels;
+	}
+	if (leftidx < 0 || rightidx < 0) {
+		fprintf(stderr, "Invalid channel conf\n");
+		handler_impl();
+		exit(1);
+	}
+#else
+	leftidx = 0;
+	rightidx = (adecctx->channels > 1) ? 1 : 0;
 	if (adecctx->channel_layout == 0 && adecctx->channels == 1) {
 		//chcount = 1;
 		chcount = adecctx->channels;
@@ -1443,6 +1476,7 @@ int main(int argc, char **argv)
 			exit(1);
 		}
 	}
+#endif
 	data_size = av_get_bytes_per_sample(adecctx->sample_fmt);
 	if (data_size < 0 || (data_size != 1 && data_size != 2 && data_size != 4 && data_size != 8)) {
 		fprintf(stderr, "Fatal error: shouldn't occur\n");
