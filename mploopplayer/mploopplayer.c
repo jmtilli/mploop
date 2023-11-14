@@ -1244,7 +1244,7 @@ int main(int argc, char **argv)
 	printf("================================================================================\n");
 	if (usegain)
 	{
-		struct AVReplayGain *av_gain = NULL;
+		const struct AVReplayGain *av_gain = NULL;
 #if LIBAVFORMAT_VERSION_MAJOR < 59
 		int size = 0;
 #else
@@ -1260,7 +1260,17 @@ int main(int argc, char **argv)
 			gain_db += trackgain + (magic_ref - ref);
 		} else {
 			// TODO add optional support for ReplayGain in APE tag
+#if LIBAVCODEC_VERSION_MAJOR > 60 || (LIBAVCODEC_VERSION_MAJOR == 60 && LIBAVCODEC_VERSION_MINOR >= 30)
+			const struct AVPacketSideData *sd;
+			sd = av_packet_side_data_get(
+					avfctx->streams[aidx]->codecpar->coded_side_data,
+					avfctx->streams[aidx]->codecpar->nb_coded_side_data,
+					AV_PKT_DATA_REPLAYGAIN);
+			av_gain = (const AVReplayGain*)sd->data;
+			size = sizeof(*av_gain);
+#else
 			av_gain = (AVReplayGain*)av_stream_get_side_data(avfctx->streams[aidx], AV_PKT_DATA_REPLAYGAIN, &size);
+#endif
 			if (av_gain != NULL) {
 				if (size != sizeof(*av_gain)) {
 					fprintf(stderr, "Error: invalid ReplayGain data\n");
