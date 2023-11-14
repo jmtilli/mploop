@@ -1241,7 +1241,11 @@ int main(int argc, char **argv)
 	if (usegain)
 	{
 		struct AVReplayGain *av_gain = NULL;
+#if LIBAVFORMAT_VERSION_MAJOR < 59
 		int size = 0;
+#else
+		size_t size = 0;
+#endif
 		if (has_albumgain == 128) {
 			gain_db += albumgain;
 		} else if (has_trackgain == 128) {
