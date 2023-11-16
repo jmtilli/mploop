@@ -656,7 +656,7 @@ void log_cb(void *avcl, int level, const char *fmt, va_list ap)
 					return;
 				}
 			}
-			if ((strcmp(item_name, "opus") == 0 || strcmp(item_name, "mp3float") == 0) && avoid_state == AVOID_OPUS_MSG && level == AV_LOG_WARNING)
+			if ((strcmp(item_name, "opus") == 0 || strcmp(item_name, "vorbis") == 0 || strcmp(item_name, "mp3float") == 0) && avoid_state == AVOID_OPUS_MSG && level == AV_LOG_WARNING)
 			{
 				if (strcmp(rawlinebuf, "Could not update timestamps for skipped samples.\n") == 0) {
 					free(linebuf);
