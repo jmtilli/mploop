@@ -8,6 +8,61 @@ import xml.etree.ElementTree as ET
 
 MAX_LINE = 4097
 
+def is_url(x):
+    lowfl = x.lower()
+    url = False
+    if lowfl.startswith("http://"):
+        url = True
+    elif lowfl.startswith("https://"):
+        url = True
+    elif lowfl.startswith("smb://"):
+        url = True
+    elif lowfl.startswith("amqp://"):
+        url = True
+    elif lowfl.startswith("async:"):
+        url = True
+    elif lowfl.startswith("concat:"):
+        url = True
+    elif lowfl.startswith("icecast://"):
+        url = True
+    elif lowfl.startswith("ipfs://"):
+        url = True
+    elif lowfl.startswith("mmst://"):
+        url = True
+    elif lowfl.startswith("mmsh://"):
+        url = True
+    elif lowfl.startswith("rtmp://"):
+        url = True
+    elif lowfl.startswith("rtmpe://"):
+        url = True
+    elif lowfl.startswith("rtmps://"):
+        url = True
+    elif lowfl.startswith("rtmpt://"):
+        url = True
+    elif lowfl.startswith("rtmpte://"):
+        url = True
+    elif lowfl.startswith("rtmpts://"):
+        url = True
+    elif lowfl.startswith("sftp://"):
+        url = True
+    elif lowfl.startswith("rtp://"):
+        url = True
+    elif lowfl.startswith("rtsp://"):
+        url = True
+    elif lowfl.startswith("sap://"):
+        url = True
+    elif lowfl.startswith("sctp://"):
+        url = True
+    elif lowfl.startswith("srt://"):
+        url = True
+    elif lowfl.startswith("srtp://"):
+        url = True
+    elif lowfl.startswith("tcp://"):
+        url = True
+    elif lowfl.startswith("tls://"):
+        url = True
+    return url
+
 def get_wpl_playlist(x):
     res = []
     dirnam = os.path.dirname(x)
@@ -23,7 +78,11 @@ def get_wpl_playlist(x):
             for media in seq.findall('media'):
                 if 'src' not in media.attrib:
                     return None
-                res.append(os.path.join(dirnam, media.attrib['src']))
+                fl = media.attrib['src']
+                if is_url(fl):
+                    res.append(fl)
+                else:
+                    res.append(os.path.join(dirnam, fl))
         return res
     except:
         return None
@@ -45,7 +104,11 @@ def get_xspf_playlist(x):
             if len(locations) < 1:
                 continue
             location = locations[0]
-            res.append(location.text)
+            fl = location.text
+            if is_url(fl):
+                res.append(fl)
+            else:
+                res.append(os.path.join(dirnam, fl))
         return res
     except:
         return None
@@ -65,7 +128,11 @@ def get_pls_playlist(x):
                 for k in range(1, number_of_entries+1):
                     if k not in entries:
                         return None
-                    res.append(os.path.join(dirnam, entries[k]))
+                    fl = entries[k]
+                    if is_url(fl):
+                        res.append(fl)
+                    else:
+                        res.append(os.path.join(dirnam, fl))
                 return res
             if len(l) == MAX_LINE:
                 return None
@@ -120,58 +187,7 @@ def get_m3u_playlist(x):
                 continue
             if l[-1] == '\n':
                 l = l[:-1]
-            lowfl = l.lower()
-            url = False
-            if lowfl.startswith("http://"):
-                url = True
-            elif lowfl.startswith("https://"):
-                url = True
-            elif lowfl.startswith("smb://"):
-                url = True
-            elif lowfl.startswith("amqp://"):
-                url = True
-            elif lowfl.startswith("async:"):
-                url = True
-            elif lowfl.startswith("concat:"):
-                url = True
-            elif lowfl.startswith("icecast://"):
-                url = True
-            elif lowfl.startswith("ipfs://"):
-                url = True
-            elif lowfl.startswith("mmst://"):
-                url = True
-            elif lowfl.startswith("mmsh://"):
-                url = True
-            elif lowfl.startswith("rtmp://"):
-                url = True
-            elif lowfl.startswith("rtmpe://"):
-                url = True
-            elif lowfl.startswith("rtmps://"):
-                url = True
-            elif lowfl.startswith("rtmpt://"):
-                url = True
-            elif lowfl.startswith("rtmpte://"):
-                url = True
-            elif lowfl.startswith("rtmpts://"):
-                url = True
-            elif lowfl.startswith("sftp://"):
-                url = True
-            elif lowfl.startswith("rtp://"):
-                url = True
-            elif lowfl.startswith("rtsp://"):
-                url = True
-            elif lowfl.startswith("sap://"):
-                url = True
-            elif lowfl.startswith("sctp://"):
-                url = True
-            elif lowfl.startswith("srt://"):
-                url = True
-            elif lowfl.startswith("srtp://"):
-                url = True
-            elif lowfl.startswith("tcp://"):
-                url = True
-            elif lowfl.startswith("tls://"):
-                url = True
+            url = is_url(l)
             if not url:
                 l = os.path.join(os.path.dirname(x), l)
             if not url and not os.access(l, os.R_OK):
