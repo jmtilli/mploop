@@ -79,6 +79,8 @@ def get_asx_playlist(x):
             if 'href' not in ref.attrib:
                 return None
             fl = ref.attrib['href']
+            if str == bytes:
+                fl = fl.encode("utf-8")
             if is_url(fl):
                 res.append(fl)
             else:
@@ -103,6 +105,8 @@ def get_wpl_playlist(x):
                 if 'src' not in media.attrib:
                     return None
                 fl = media.attrib['src']
+                if str == bytes:
+                    fl = fl.encode("utf-8")
                 if is_url(fl):
                     res.append(fl)
                 else:
@@ -130,6 +134,8 @@ def get_xspf_playlist(x):
                 continue
             location = locations[0]
             fl = location.text
+            if str == bytes:
+                fl = fl.encode("utf-8")
             if is_url(fl):
                 res.append(fl)
             else:
