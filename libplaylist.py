@@ -8,6 +8,26 @@ import xml.etree.ElementTree as ET
 
 MAX_LINE = 4097
 
+def get_wpl_playlist(x):
+    res = []
+    dirnam = os.path.dirname(x)
+    try:
+        tree = ET.parse(x)
+        root = tree.getroot()
+        if root.tag != 'smil':
+            return None
+        body = root.findall('body')
+        if len(body) != 1:
+            return None
+        for seq in body[0].findall('seq'):
+            for media in seq.findall('media'):
+                if 'src' not in media.attrib:
+                    return None
+                res.append(os.path.join(dirnam, media.attrib['src']))
+        return res
+    except:
+        return None
+
 def get_xspf_playlist(x):
     res = []
     try:
@@ -185,6 +205,9 @@ def get_playlist(x):
     if y is not None:
         return y
     y = get_xspf_playlist(x)
+    if y is not None:
+        return y
+    y = get_wpl_playlist(x)
     if y is not None:
         return y
     return None
