@@ -10,6 +10,7 @@ import subprocess
 import random
 import getopt
 import libmploop
+import libplaylist
 
 libmploop.touch()
 
@@ -141,6 +142,11 @@ for fl in args:
     if not url and not os.path.isfile(ap):
         print(fl + " is not file")
         sys.exit(1)
+    if not url:
+        pl = libplaylist.get_playlist(ap)
+        if pl is not None:
+            aps += [libmploop.escape(ap2) for ap2 in pl]
+            continue
     aps.append(libmploop.escape(ap))
 
 if shuffle:
