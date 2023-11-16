@@ -63,6 +63,30 @@ def is_url(x):
         url = True
     return url
 
+def get_asx_playlist(x):
+    res = []
+    dirnam = os.path.dirname(x)
+    try:
+        tree = ET.parse(x)
+        root = tree.getroot()
+        if root.tag != 'asx':
+            return None
+        for entry in root.findall('entry'):
+            refs = entry.findall('ref')
+            if len(refs) != 1:
+                return None
+            ref = refs[0]
+            if 'href' not in ref.attrib:
+                return None
+            fl = ref.attrib['href']
+            if is_url(fl):
+                res.append(fl)
+            else:
+                res.append(os.path.join(dirnam, fl))
+        return res
+    except:
+        return None
+
 def get_wpl_playlist(x):
     res = []
     dirnam = os.path.dirname(x)
@@ -226,6 +250,9 @@ def get_playlist(x):
     if y is not None:
         return y
     y = get_wpl_playlist(x)
+    if y is not None:
+        return y
+    y = get_asx_playlist(x)
     if y is not None:
         return y
     return None
