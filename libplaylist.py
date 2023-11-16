@@ -89,6 +89,7 @@ def get_wpl_playlist(x):
 
 def get_xspf_playlist(x):
     res = []
+    dirnam = os.path.dirname(x)
     try:
         tree = ET.parse(x)
         root = tree.getroot()
