@@ -1680,9 +1680,7 @@ int main(int argc, char **argv)
 	}
 	bytes_per_sec = (uint32_t)(obtained.freq*obtained.channels*obtained_data_size);
 	while ((inqueue = (uint32_t)SDL_GetQueuedAudioSize(audid)) > 0) {
-		if (inqueue > 0) {
-			usleep((useconds_t)(inqueue*1e6/bytes_per_sec)+300);
-		}
+		usleep((useconds_t)(inqueue*0.9e6/bytes_per_sec)+300);
 	}
 	handler_impl();
 	return 0;
