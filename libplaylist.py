@@ -4,8 +4,31 @@ import os
 import re
 import sys
 import subprocess
+import xml.etree.ElementTree as ET
 
 MAX_LINE = 4097
+
+def get_xspf_playlist(x):
+    res = []
+    try:
+        tree = ET.parse(x)
+        root = tree.getroot()
+        if root.tag != '{http://xspf.org/ns/0/}playlist':
+            return None
+        if "version" not in root.attrib or root.attrib["version"] != "1":
+            return None
+        tracks = root.findall('{http://xspf.org/ns/0/}trackList')
+        if len(tracks) != 1:
+            return None
+        for track in tracks[0].findall('{http://xspf.org/ns/0/}track'):
+            locations = track.findall('{http://xspf.org/ns/0/}location')
+            if len(locations) < 1:
+                continue
+            location = locations[0]
+            res.append(location.text)
+        return res
+    except:
+        return None
 
 def get_pls_playlist(x):
     tag_seen = False
@@ -159,6 +182,9 @@ def get_playlist(x):
     if y is not None:
         return y
     y = get_pls_playlist(x)
+    if y is not None:
+        return y
+    y = get_xspf_playlist(x)
     if y is not None:
         return y
     return None
