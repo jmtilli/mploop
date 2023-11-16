@@ -1106,6 +1106,8 @@ int main(int argc, char **argv)
 	int urlmode = 0;
 	const char *sockarg = NULL;
 	struct sockaddr_un sun;
+	uint32_t inqueue;
+	uint32_t bytes_per_sec;
 #if 0
 	AVStream *audio_stream;
 #endif
@@ -1675,6 +1677,12 @@ int main(int argc, char **argv)
 	}
 	if (adecctx) {
 		ret = avcodec_send_packet(adecctx, NULL);
+	}
+	bytes_per_sec = (uint32_t)(obtained.freq*obtained.channels*obtained_data_size);
+	while ((inqueue = (uint32_t)SDL_GetQueuedAudioSize(audid)) > 0) {
+		if (inqueue > 0) {
+			usleep((useconds_t)(inqueue*1e6/bytes_per_sec)+300);
+		}
 	}
 	handler_impl();
 	return 0;
