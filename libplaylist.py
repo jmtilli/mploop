@@ -54,6 +54,7 @@ def get_pls_playlist(x):
     tag_seen = False
     entries = {}
     number_of_entries = None
+    dirnam = os.path.dirname(x)
     with open(x, "r") as f:
         while True:
             l = f.readline(MAX_LINE)
@@ -64,7 +65,7 @@ def get_pls_playlist(x):
                 for k in range(1, number_of_entries+1):
                     if k not in entries:
                         return None
-                    res.append(entries[k])
+                    res.append(os.path.join(dirnam, entries[k]))
                 return res
             if len(l) == MAX_LINE:
                 return None
