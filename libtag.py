@@ -92,11 +92,13 @@ def get_id3v2_4(fname):
         size = decode_syncsafe(id3header[6:10])
         if size is None:
             return None
-        unsync_all = ((flags>>7) == 1)
-        exthdr = ((flags>>6) == 1)
-        experimental = ((flags>>5) == 1)
-        footerpresent = ((flags>>4) == 1)
-        if flags&31:
+        unsync_all = (((flags>>7)&1) == 1)
+        exthdr = (((flags>>6)&1) == 1)
+        experimental = (((flags>>5)&1) == 1)
+        footerpresent = (((flags>>4)&1) == 1)
+        if flags&15:
+            return None
+        if flags&128:
             return None
         if exthdr:
             exthdr1 = f.read(4)
@@ -146,11 +148,11 @@ def get_id3v2_4(fname):
                 continue # probably compressed or encrypted
             #print(repr(framehdr[0:4]))
             keys = {
-                    b"COMM": "COMMENT",
+                    #b"COMM": "COMMENT", # Complex to support
                     b"TXXX": "DESCRIPTION",
                     b"TCOM": "COMPOSER",
                     b"TCOP": "COPYRIGHT",
-                    b"WCOP": "COPYRIGHT",
+                    #b"WCOP": "COPYRIGHT", # Not sure if includes encoding byte
                     b"TENC": "ENCODED-BY",
                     b"TEXT": "LYRICIST",
                     b"TIT1": "TITLE",
@@ -209,10 +211,12 @@ def get_id3v2_3(fname):
         size = decode_syncsafe(id3header[6:10])
         if size is None:
             return None
-        unsync = ((flags>>7) == 1)
-        exthdr = ((flags>>6) == 1)
-        experimental = ((flags>>5) == 1)
+        unsync = (((flags>>7)&1) == 1)
+        exthdr = (((flags>>6)&1) == 1)
+        experimental = (((flags>>5)&1) == 1)
         if flags&31:
+            return None
+        if flags&128:
             return None
         if exthdr:
             exthdr1 = maybe_unsync_read(f, unsync, 4)
@@ -242,11 +246,11 @@ def get_id3v2_3(fname):
                 return res
             #print(repr(framehdr[0:4]))
             keys = {
-                    b"COMM": "COMMENT",
+                    #b"COMM": "COMMENT", # Complex to support
                     b"TXXX": "DESCRIPTION",
                     b"TCOM": "COMPOSER",
                     b"TCOP": "COPYRIGHT",
-                    b"WCOP": "COPYRIGHT",
+                    #b"WCOP": "COPYRIGHT", # Not sure if includes encoding byte
                     b"TENC": "ENCODED-BY",
                     b"TEXT": "LYRICIST",
                     b"TIT1": "TITLE",
@@ -268,6 +272,7 @@ def get_id3v2_3(fname):
                 continue
             key = keys[framehdr[0:4]]
             encoding = struct.unpack("B", framecontents[0:1])[0]
+            # If the textstring is followed by a termination ($00 (00)) all the following information should be ignored and not be displayed. 
             if encoding == 0:
                 val = framecontents[1:].decode("iso-8859-1")
             elif encoding == 1:
