@@ -156,6 +156,18 @@ ID3_GENRE_LIST = {
     148: u"Unknown",
 }
 
+def mangle_genre(x):
+    if not re.match("^(\\(([0-9]|[1-9][0-9]|1[0-3][0-9]|14[0-8])\\))+$", x):
+        return x
+    genres = []
+    while x != "":
+        res = re.match("^\\(([0-9]+)\\)", x)
+        if not res:
+            break
+        genres.append(ID3_GENRE_LIST[int(res.group(1))])
+        x = x[len(res.group(0)):]
+    return u', '.join(genres)
+
 def decode_syncsafe(x):
     sizebytes = struct.unpack("BBBB", x)
     if sizebytes[0]>>7:
@@ -342,6 +354,8 @@ def get_id3v2_4(fname):
                 val = framecontents[1:-1].decode("utf-8")
                 if framecontents[-1:] != b"\x00":
                     return None
+            if key == 'GENRE':
+                val = mangle_genre(val)
             res.append((key, val))
 
 def get_id3v2_3(fname):
@@ -431,6 +445,8 @@ def get_id3v2_3(fname):
                 val = framecontents[1:].decode("utf-16")
             #elif encoding == 2:
             #    val = (b"\xfe\xff"+framecontents[1:]).decode("utf-16")
+            if key == 'GENRE':
+                val = mangle_genre(val)
             res.append((key, val))
 
 def get_id3v2_2(fname):
@@ -510,6 +526,8 @@ def get_id3v2_2(fname):
                 val = framecontents[1:].decode("utf-16")
             #elif encoding == 2:
             #    val = (b"\xfe\xff"+framecontents[1:]).decode("utf-16")
+            if key == 'GENRE':
+                val = mangle_genre(val)
             res.append((key, val))
 
 def get_id3v2(fname):
