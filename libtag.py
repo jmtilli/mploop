@@ -277,8 +277,87 @@ def get_id3v2_3(fname):
                 val = framecontents[1:].decode("iso-8859-1")
             elif encoding == 1:
                 val = framecontents[1:].decode("utf-16")
-            elif encoding == 2:
-                val = (b"\xfe\xff"+framecontents[1:]).decode("utf-16")
+            #elif encoding == 2:
+            #    val = (b"\xfe\xff"+framecontents[1:]).decode("utf-16")
+            res.append((key, val))
+
+def get_id3v2_2(fname):
+    with open(fname, "rb") as f:
+        id3header = f.read(10)
+        if len(id3header) != 10:
+            return None
+        if id3header[0:3] != b"ID3":
+            return None
+        version = struct.unpack("B", id3header[3:4])[0]
+        if version == 0xFF:
+            return None
+        if version != 2:
+            return None
+        revision = struct.unpack("B", id3header[4:5])[0]
+        if revision == 0xFF:
+            return None
+        flags = struct.unpack("B", id3header[5:6])[0]
+        size = decode_syncsafe(id3header[6:10])
+        if size is None:
+            return None
+        unsync = (((flags>>7)&1) == 1)
+        compression = (((flags>>6)&1) == 1)
+        if compression:
+            return None
+        if flags&63:
+            return None
+        if flags&128:
+            return None
+        res = []
+        while True:
+            if f.tell() > size+10:
+                return res
+            framehdr = maybe_unsync_read(f, unsync, 6)
+            if len(framehdr) != 6:
+                return res
+            if f.tell() > size+10:
+                return res
+            framesz = struct.unpack(">I", b"\x00"+framehdr[3:6])[0]
+            framecontents = maybe_unsync_read(f, unsync, framesz)
+            if len(framecontents) != framesz:
+                return res
+            if f.tell() > size+10:
+                return res
+            #print(repr(framehdr[0:4]))
+            keys = {
+                    #b"COM": "COMMENT", # complex to support
+                    b"TXX": "DESCRIPTION",
+                    b"TCM": "COMPOSER",
+                    b"TCR": "COPYRIGHT",
+                    #b"WCP": "COPYRIGHT", # complex to support
+                    b"TEN": "ENCODED-BY",
+                    b"TXT": "LYRICIST",
+                    b"TT1": "TITLE",
+                    b"TT2": "TITLE",
+                    b"TT3": "SUBTITLE",
+                    b"TP1": "ARTIST",
+                    b"TP2": "ARTIST",
+                    b"TP3": "CONDUCTOR",
+                    b"TP4": "REMIXER",
+                    b"TPB": "PUBLISHER",
+                    b"TRC": "ISRC",
+                    b"TAL": "ALBUM",
+                    b"TRK": "TRACKNUMBER",
+                    b"TDA": "DATE",
+                    b"TYE": "YEAR",
+                    b"TCO": "GENRE", # (51)(39) refers to genres 51 and 39
+            }
+            if framehdr[0:3] not in keys:
+                continue
+            key = keys[framehdr[0:3]]
+            # If the textstring is followed by a termination ($00 (00)) all the following information should be ignored and not be displayed.
+            encoding = struct.unpack("B", framecontents[0:1])[0]
+            if encoding == 0:
+                val = framecontents[1:].decode("iso-8859-1")
+            elif encoding == 1:
+                val = framecontents[1:].decode("utf-16")
+            #elif encoding == 2:
+            #    val = (b"\xfe\xff"+framecontents[1:]).decode("utf-16")
             res.append((key, val))
 
 def get_id3v2(fname):
@@ -305,8 +384,12 @@ def get_id3v2(fname):
         if sizebytes[3]>>7:
             return None
         size = (sizebytes[0]<<21)|(sizebytes[1]<<14)|(sizebytes[2]<<7)|(sizebytes[3])
+        if version == 4:
+            return get_id3v2_4(fname)
         if version == 3:
             return get_id3v2_3(fname)
+        if version == 2:
+            return get_id3v2_2(fname)
 
 def get_ape(fname):
     with open(fname, "rb") as f:
