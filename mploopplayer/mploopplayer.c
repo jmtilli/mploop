@@ -1542,6 +1542,10 @@ int main(int argc, char **argv)
 	snprintf(fnamebuf, fnamebuflen, urlmode ? "%s" : "file:%s", argv[optind]);
 
 	SDL_Init(SDL_INIT_AUDIO);
+#if LIBAVFORMAT_VERSION_MAJOR > 58 || (LIBAVFORMAT_VERSION_MAJOR == 58 && LIBAVFORMAT_VERSION_MINOR >= 9)
+#else
+	av_register_all();
+#endif
 	av_log_set_callback(log_cb);
 
 	avoid_state = AVOID_OGG_MSG; // Avoid opus message from ogg: "693 bytes of comment header remain"
