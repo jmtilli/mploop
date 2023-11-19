@@ -766,7 +766,8 @@ def get_id3v1(fname):
             res.append(("ARTIST", artist))
             res.append(("ALBUM", album))
             res.append(("YEAR", year))
-            res.append(("COMMENT", comment))
+            if comment:
+                res.append(("COMMENT", comment))
             try:
                 res.append(("TRACKNUMBER", unicode(tracknumber)))
             except NameError:
