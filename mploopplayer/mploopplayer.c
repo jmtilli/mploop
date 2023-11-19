@@ -1677,6 +1677,7 @@ int main(int argc, char **argv)
 		cur = cur->next;
 	}
 	printf("--------------------------------------------------------------------------------\n");
+#if LIBAVCODEC_VERSION_MAJOR > 57 || (LIBAVCODEC_VERSION_MAJOR == 57 && LIBAVCODEC_VERSION_MINOR >= 25)
 	dec = avcodec_find_decoder(avfctx->streams[aidx]->codecpar->codec_id);
 	if (!dec) {
 		fprintf(stderr, "File %s is probably not an audio file, can't find decoder\n", argv[optind]);
@@ -1694,6 +1695,15 @@ int main(int argc, char **argv)
 		handler_impl();
 		exit(1);
 	}
+#else
+	dec = avcodec_find_decoder(avfctx->streams[aidx]->codec->codec_id);
+	if (!dec) {
+		fprintf(stderr, "File %s is probably not an audio file, can't find decoder\n", argv[optind]);
+		handler_impl();
+		exit(1);
+	}
+	adecctx = avfctx->streams[aidx]->codec;
+#endif
 	if (avcodec_open2(adecctx, dec, NULL) < 0) {
 		fprintf(stderr, "Cannot open audio codec, probably out of memory\n");
 		handler_impl();
