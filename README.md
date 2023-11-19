@@ -22,7 +22,7 @@ The scripts controlling the player are:
 
 * mpprev for jumping to the previous song or N songs backwards
 * mpnext for jumping to the next song or N songs forwards
-* mpplaypayse for toggling between playing and paused states
+* mpplaypause for toggling between playing and paused states
 * mprewind for rewinding back to the beginning of the current song
 * mpseek for seeking back/forwards the specified number of seconds
 
