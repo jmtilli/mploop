@@ -410,8 +410,13 @@ void output_audio_frame(AVFrame *frame)
 #if 0
 	size_t unpadded_linesize = frame->nb_samples * av_get_bytes_per_sample(frame->format);
 #endif
+#if LIBAVCODEC_VERSION_MAJOR > 57 || (LIBAVCODEC_VERSION_MAJOR == 57 && LIBAVCODEC_VERSION_MINOR >= 61)
 	pts = frame->pts;
 	float mytime = ((float)frame->pts) * ((float)avfctx->streams[aidx]->time_base.num) / (float)avfctx->streams[aidx]->time_base.den;
+#else
+	pts = frame->pkt_pts;
+	float mytime = ((float)frame->pkt_pts) * ((float)adecctx->time_base.num) / (float)adecctx->time_base.den;
+#endif
 	print_status("[V: %.1f] A: %.1f / %.1f", volume_db, mytime, duration);
 	fflush(stdout);
 	bufloc = 0;
