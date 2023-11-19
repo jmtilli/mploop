@@ -1850,6 +1850,7 @@ int main(int argc, char **argv)
 		else if (adecctx->sample_fmt == AV_SAMPLE_FMT_DBLP) {
 			audio_format_as_sdl = AUDIO_F32SYS;
 		}
+#if LIBAVUTIL_VERSION_MAJOR > 55 || (LIBAVUTIL_VERSION_MAJOR == 55 && LIBAVUTIL_VERSION_MINOR >= 21)
 		else if (adecctx->sample_fmt == AV_SAMPLE_FMT_S64) {
 			//printf("nonplanar\n");
 			nonplanar = 1;
@@ -1858,6 +1859,7 @@ int main(int argc, char **argv)
 		else if (adecctx->sample_fmt == AV_SAMPLE_FMT_S64P) {
 			audio_format_as_sdl = AUDIO_S32SYS;
 		}
+#endif
 	}
 	else if (data_size == 4) {
 		if (adecctx->sample_fmt == AV_SAMPLE_FMT_FLT) {
