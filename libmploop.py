@@ -9,6 +9,7 @@ import time
 import subprocess
 import select
 import socket
+import libtag
 try:
     from StringIO import StringIO
 except ImportError:
@@ -529,10 +530,46 @@ def get_gain(ln):
             return (False, 0.0, [])
         return get_mp4_gain(ln)
     elif mimetype == "audio/mpeg":
+        #if mploopplayer:
+        #    res = get_mp3_gain(ln)
+        #    return (res[0], res[1], [])
+        #return get_mp3_gain(ln)
+        discard, id3v1tags = libtag.get_id3v1(ln)
+        apegain, apetags = libtag.get_ape(ln)
+        todel = set(["MP3GAIN_MINMAX", "MP3GAIN_ALBUM_MINMAX", "REPLAYGAIN_TRACK_PEAK", "REPLAYGAIN_ALBUM_PEAK"])
+        if apetags:
+            apetags = [x for x in apetags if x[0] not in todel]
+        id3gain, id3v2tags = libtag.get_id3v2(ln)
         if mploopplayer:
-            res = get_mp3_gain(ln)
-            return (res[0], res[1], [])
-        return get_mp3_gain(ln)
+            tags = apetags or []
+        else:
+            tags = id3v2tags or apetags or id3v1tags or []
+        if id3gain and "ALBUM" in id3gain:
+            mp3ref = 89.0
+            if "REF" in id3gain:
+                mp3ref = id3gain["REF"]
+            mp3gaindecision = id3gain["ALBUM"] + offset + (magic_ref - mp3ref)
+            return (True, mp3gaindecision, tags)
+        elif id3gain and "TRACK" in id3gain:
+            mp3ref = 89.0
+            if "REF" in id3gain:
+                mp3ref = id3gain["REF"]
+            mp3gaindecision = id3gain["TRACK"] + offset + (magic_ref - mp3ref)
+            return (True, mp3gaindecision, tags)
+        elif apegain and "ALBUM" in apegain:
+            mp3ref = 89.0
+            if "REF" in apegain:
+                mp3ref = apegain["REF"]
+            mp3gaindecision = apegain["ALBUM"] + offset + (magic_ref - mp3ref)
+            return (True, mp3gaindecision, tags)
+        elif apegain and "TRACK" in apegain:
+            mp3ref = 89.0
+            if "REF" in apegain:
+                mp3ref = apegain["REF"]
+            mp3gaindecision = apegain["TRACK"] + offset + (magic_ref - mp3ref)
+            return (True, mp3gaindecision, tags)
+        else:
+            return (False, 0.0, tags)
     elif mimetype == "audio/ogg":
         if mploopplayer:
             return (False, 0.0, [])
