@@ -1944,12 +1944,22 @@ int main(int argc, char **argv)
 		handler_impl();
 		exit(1);
 	}
+#if LIBAVCODEC_VERSION_MAJOR > 57 || (LIBAVCODEC_VERSION_MAJOR == 57 && LIBAVCODEC_VERSION_MINOR >= 13)
+	packet = malloc(sizeof(*packet));
+	if (!packet) {
+		fprintf(stderr, "Cannot allocate packet, probably out of memory\n");
+		handler_impl();
+		exit(1);
+	}
+	av_init_packet(packet);
+#else
 	packet = av_packet_alloc();
 	if (!packet) {
 		fprintf(stderr, "Cannot allocate packet, probably out of memory\n");
 		handler_impl();
 		exit(1);
 	}
+#endif
 	SDL_PauseAudioDevice(audid, 0);
 	struct termios term;
 	tcgetattr(fileno(stdin), &term);
