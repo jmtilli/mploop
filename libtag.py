@@ -241,51 +241,53 @@ def get_id3v2_4(fname):
     with open(fname, "rb") as f:
         id3header = f.read(10)
         if len(id3header) != 10:
-            return None
+            return None, None
         if id3header[0:3] != b"ID3":
-            return None
+            return None, None
         version = struct.unpack("B", id3header[3:4])[0]
         if version == 0xFF:
-            return None
+            return None, None
         if version != 4:
-            return None
+            return None, None
         revision = struct.unpack("B", id3header[4:5])[0]
         if revision == 0xFF:
-            return None
+            return None, None
         flags = struct.unpack("B", id3header[5:6])[0]
         size = decode_syncsafe(id3header[6:10])
         if size is None:
-            return None
+            return None, None
         unsync_all = (((flags>>7)&1) == 1)
         exthdr = (((flags>>6)&1) == 1)
         experimental = (((flags>>5)&1) == 1)
         footerpresent = (((flags>>4)&1) == 1)
         if flags&15:
-            return None
-        if flags&128:
-            return None
+            return None, None
+        #if flags&128:
+        #    return None, None # XXX this fails with tags created by mp3gain
         if exthdr:
             exthdr1 = f.read(4)
             if len(exthdr1) != 4:
-                return None
+                return None, None
             esize = decode_syncsafe(exthdr1)
             if esize is None:
-                return None
+                return None, None
             exthdr = f.read(esize)
             if len(exthdr) != esize:
-                return None
+                return None, None
+        gain = {}
         res = []
         while True:
             if f.tell() > size+10:
-                return res
+                return gain, res
             framehdr = f.read(10)
             if len(framehdr) != 10:
-                return res
+                return gain, res
             if f.tell() > size+10:
-                return res
+                return gain, res
             framesz = decode_syncsafe(framehdr[4:8])
             if framesz is None:
-                return None
+                print("ret-None")
+                return None, None
             flags = struct.unpack(">H", framehdr[8:10])[0]
             grouping_identity = (flags >> 6)&1
             compression = (flags >> 3)&1
@@ -295,13 +297,13 @@ def get_id3v2_4(fname):
             if data_length:
                 dlen = f.read(4) # probably should decode from syncsafe
                 if len(dlen) != 4:
-                    return res
+                    return gain, res
                 framesz -= 4
             framecontents = maybe_unsync_read(f, unsync_all or frame_unsync, framesz)
             if len(framecontents) != framesz:
-                return res
+                return gain, res
             if f.tell() > size+10:
-                return res
+                return gain, res
             if grouping_identity:
                 continue # don't know how to handle this
             if compression:
@@ -339,77 +341,105 @@ def get_id3v2_4(fname):
             key = keys[framehdr[0:4]]
             encoding = struct.unpack("B", framecontents[0:1])[0]
             if encoding == 0:
-                val = framecontents[1:-1].decode("iso-8859-1")
-                if framecontents[-1:] != b"\x00":
-                    return None
+                if framecontents[-1:] == b"\x00":
+                    framecontents = framecontents[:-1]
+                val = framecontents[1:].decode("iso-8859-1")
+                #if framecontents[-1:] != b"\x00":
+                #    return None, None
             elif encoding == 1:
-                val = framecontents[1:-2].decode("utf-16")
-                if framecontents[-2:] != b"\x00\x00":
-                    return None
+                if framecontents[-2:] == b"\x00\x00":
+                    framecontents = framecontents[:-2]
+                val = framecontents[1:].decode("utf-16")
+                #if framecontents[-2:] != b"\x00\x00":
+                #    return None, None
             elif encoding == 2:
-                val = (b"\xfe\xff"+framecontents[1:-2]).decode("utf-16")
-                if framecontents[-2:] != b"\x00\x00":
-                    return None
+                if framecontents[-2:] == b"\x00\x00":
+                    framecontents = framecontents[:-2]
+                val = (b"\xfe\xff"+framecontents[1:]).decode("utf-16")
+                #if framecontents[-2:] != b"\x00\x00":
+                #    return None, None
             elif encoding == 3:
-                val = framecontents[1:-1].decode("utf-8")
-                if framecontents[-1:] != b"\x00":
-                    return None
+                if framecontents[-1:] == b"\x00":
+                    framecontents = framecontents[:-1]
+                val = framecontents[1:].decode("utf-8")
+                #if framecontents[-1:] != b"\x00":
+                #    return None, None
             if key == 'GENRE':
                 val = mangle_genre(val)
-            res.append((key, val))
+            if framehdr[0:4] == b"TXXX":
+                split_val = val.split(u"\x00", 1)
+                if len(split_val) == 2 and split_val[0] == "replaygain_reference_loudness":
+                    try:
+                        gain["REF"] = float(re.sub(" dB$", "", split_val[1]))
+                    except:
+                        pass
+                if len(split_val) == 2 and split_val[0] == "replaygain_track_gain":
+                    try:
+                        gain["TRACK"] = float(re.sub(" dB$", "", split_val[1]))
+                    except:
+                        pass
+                if len(split_val) == 2 and split_val[0] == "replaygain_album_gain":
+                    try:
+                        gain["ALBUM"] = float(re.sub(" dB$", "", split_val[1]))
+                    except:
+                        pass
+                continue
+            else:
+                res.append((key, val))
 
 def get_id3v2_3(fname):
     with open(fname, "rb") as f:
         id3header = f.read(10)
         if len(id3header) != 10:
-            return None
+            return None, None
         if id3header[0:3] != b"ID3":
-            return None
+            return None, None
         version = struct.unpack("B", id3header[3:4])[0]
         if version == 0xFF:
-            return None
+            return None, None
         if version != 3:
-            return None
+            return None, None
         revision = struct.unpack("B", id3header[4:5])[0]
         if revision == 0xFF:
-            return None
+            return None, None
         flags = struct.unpack("B", id3header[5:6])[0]
         size = decode_syncsafe(id3header[6:10])
         if size is None:
-            return None
+            return None, None
         unsync = (((flags>>7)&1) == 1)
         exthdr = (((flags>>6)&1) == 1)
         experimental = (((flags>>5)&1) == 1)
         if flags&31:
-            return None
+            return None, None
         if flags&128:
-            return None
+            return None, None
         if exthdr:
             exthdr1 = maybe_unsync_read(f, unsync, 4)
             if len(exthdr1) != 4:
-                return None
+                return None, None
             exthdrsize = struct.unpack(">I", exthdr1)[0]
             if exthdrsize != 6 and exthdrsize != 10:
-                return None
+                return None, None
             exthdr = maybe_unsync_read(f, unsync, exthdrsize)
             if len(exthdr) != exthdrsize:
-                return None
+                return None, None
+        gain = {}
         res = []
         while True:
             if f.tell() > size+10:
-                return res
+                return gain, res
             framehdr = maybe_unsync_read(f, unsync, 10)
             if len(framehdr) != 10:
-                return res
+                return gain, res
             if f.tell() > size+10:
-                return res
+                return gain, res
             framesz = struct.unpack(">I", framehdr[4:8])[0]
             flags = struct.unpack(">H", framehdr[8:10])[0]
             framecontents = maybe_unsync_read(f, unsync, framesz)
             if len(framecontents) != framesz:
-                return res
+                return gain, res
             if f.tell() > size+10:
-                return res
+                return gain, res
             #print(repr(framehdr[0:4]))
             keys = {
                     #b"COMM": "COMMENT", # Complex to support
@@ -447,51 +477,71 @@ def get_id3v2_3(fname):
             #    val = (b"\xfe\xff"+framecontents[1:]).decode("utf-16")
             if key == 'GENRE':
                 val = mangle_genre(val)
-            res.append((key, val))
+            if framehdr[0:4] == b"TXXX":
+                split_val = val.split(u"\x00", 1)
+                if len(split_val) == 2 and split_val[0] == "replaygain_reference_loudness":
+                    try:
+                        gain["REF"] = float(re.sub(" dB$", "", split_val[1]))
+                    except:
+                        pass
+                if len(split_val) == 2 and split_val[0] == "replaygain_track_gain":
+                    try:
+                        gain["TRACK"] = float(re.sub(" dB$", "", split_val[1]))
+                    except:
+                        pass
+                if len(split_val) == 2 and split_val[0] == "replaygain_album_gain":
+                    try:
+                        gain["ALBUM"] = float(re.sub(" dB$", "", split_val[1]))
+                    except:
+                        pass
+                continue
+            else:
+                res.append((key, val))
 
 def get_id3v2_2(fname):
     with open(fname, "rb") as f:
         id3header = f.read(10)
         if len(id3header) != 10:
-            return None
+            return None, None
         if id3header[0:3] != b"ID3":
-            return None
+            return None, None
         version = struct.unpack("B", id3header[3:4])[0]
         if version == 0xFF:
-            return None
+            return None, None
         if version != 2:
-            return None
+            return None, None
         revision = struct.unpack("B", id3header[4:5])[0]
         if revision == 0xFF:
-            return None
+            return None, None
         flags = struct.unpack("B", id3header[5:6])[0]
         size = decode_syncsafe(id3header[6:10])
         if size is None:
-            return None
+            return None, None
         unsync = (((flags>>7)&1) == 1)
         compression = (((flags>>6)&1) == 1)
         if compression:
-            return None
+            return None, None
         if flags&63:
-            return None
+            return None, None
         if flags&128:
-            return None
+            return None, None
+        gain = {}
         res = []
         while True:
             if f.tell() > size+10:
-                return res
+                return gain, res
             framehdr = maybe_unsync_read(f, unsync, 6)
             if len(framehdr) != 6:
-                return res
+                return gain, res
             if f.tell() > size+10:
-                return res
+                return gain, res
             framesz = struct.unpack(">I", b"\x00"+framehdr[3:6])[0]
             framecontents = maybe_unsync_read(f, unsync, framesz)
             if len(framecontents) != framesz:
-                return res
+                return gain, res
             if f.tell() > size+10:
-                return res
-            #print(repr(framehdr[0:4]))
+                return gain, res
+            #print(repr(framehdr[0:3]))
             keys = {
                     #b"COM": "COMMENT", # complex to support
                     b"TXX": "DESCRIPTION",
@@ -528,7 +578,26 @@ def get_id3v2_2(fname):
             #    val = (b"\xfe\xff"+framecontents[1:]).decode("utf-16")
             if key == 'GENRE':
                 val = mangle_genre(val)
-            res.append((key, val))
+            if framehdr[0:3] == b"TXX":
+                split_val = val.split(u"\x00", 1)
+                if len(split_val) == 2 and split_val[0] == "replaygain_reference_loudness":
+                    try:
+                        gain["REF"] = float(re.sub(" dB$", "", split_val[1]))
+                    except:
+                        pass
+                if len(split_val) == 2 and split_val[0] == "replaygain_track_gain":
+                    try:
+                        gain["TRACK"] = float(re.sub(" dB$", "", split_val[1]))
+                    except:
+                        pass
+                if len(split_val) == 2 and split_val[0] == "replaygain_album_gain":
+                    try:
+                        gain["ALBUM"] = float(re.sub(" dB$", "", split_val[1]))
+                    except:
+                        pass
+                continue
+            else:
+                res.append((key, val))
 
 def get_id3v2(fname):
     with open(fname, "rb") as f:
@@ -568,7 +637,7 @@ def get_ape(fname):
         f.seek(-32, 2)
         apefooter = f.read(32)
         if len(apefooter) != 32:
-            return None
+            return None, None
         if apefooter[0:8] != b"APETAGEX":
             f.seek(-128, 2)
             id3v1tag = f.read(128)
@@ -578,37 +647,38 @@ def get_ape(fname):
                     f.seek(-128-32, 2)
                     apefooter = f.read(32)
         if len(apefooter) != 32:
-            return None
+            return None, None
         if apefooter[0:8] != b"APETAGEX":
-            return None
+            return None, None
         apeversion = apefooter[8:12]
         if struct.unpack("<I", apeversion)[0] != 2000:
-            return None
+            return None, None
         apelen = struct.unpack("<I", apefooter[12:16])[0]
         apeitems = struct.unpack("<I", apefooter[16:20])[0]
         apeflags = struct.unpack("<I", apefooter[20:24])[0]
         apereserved = apefooter[24:32]
         if file_len < apelen:
-            return None
+            return None, None
         if file_len >= (apelen + (has_id3 and (128+32) or 32)):
             f.seek(-apelen-(has_id3 and (128+32) or 32), 2)
             apeheader = f.read(32)
             if len(apeheader) != 32:
-                return None
+                return None, None
             apeversion2 = apeheader[8:12]
             if struct.unpack("<I", apeversion2)[0] != 2000:
-                return None
+                return None, None
             apelen2 = struct.unpack("<I", apeheader[12:16])[0]
             apeitems2 = struct.unpack("<I", apeheader[16:20])[0]
             apeflags2 = struct.unpack("<I", apeheader[20:24])[0]
             apereserved2 = apeheader[24:32]
             if apelen2 != apelen or apeitems2 != apeitems:
-                return None
+                return None, None
+            gain = {}
             res = []
             for itemid in range(apeitems2):
                 tagheader = f.read(8)
                 if len(tagheader) != 8:
-                    return None
+                    return None, None
                 taglen = struct.unpack("<I", tagheader[0:4])[0]
                 tagflags = struct.unpack("<I", tagheader[4:8])[0]
                 key = b''
@@ -624,20 +694,38 @@ def get_ape(fname):
                     try:
                         key = key.decode("us-ascii")
                     except:
-                        return None
+                        return None, None
                 val = f.read(taglen)
                 if len(val) != taglen:
-                    return None
+                    return None, None
                 if (tagflags&0x6) == 0:
-                    res.append((key, val.decode("utf-8")))
-            return res
+                    if key == 'REPLAYGAIN_REFERENCE_LOUDNESS':
+                        try:
+                            gain["REF"] = float(re.sub(" dB$", "", val.decode("utf-8")))
+                        except:
+                            pass
+                    elif key == 'REPLAYGAIN_TRACK_GAIN':
+                        try:
+                            gain["TRACK"] = float(re.sub(" dB$", "", val.decode("utf-8")))
+                        except:
+                            pass
+                    elif key == 'REPLAYGAIN_ALBUM_GAIN':
+                        try:
+                            gain["ALBUM"] = float(re.sub(" dB$", "", val.decode("utf-8")))
+                        except:
+                            pass
+                    else:
+                        res.append((key, val.decode("utf-8")))
+            return gain, res
 
 def get_id3v1(fname):
     with open(fname, "rb") as f:
         f.seek(-128, 2)
+        gain = {}
+        res = []
         id3v1tag = f.read(128)
         if len(id3v1tag) != 128:
-            return None
+            return None, None
         if id3v1tag[0:3] == b'TAG':
             title = id3v1tag[3:33]
             while title and title[-1:] == b'\x00':
@@ -687,9 +775,9 @@ def get_id3v1(fname):
                 res.append(("GENRE", ID3_GENRE_LIST[genre]))
             except KeyError:
                 pass
-            return res
+            return gain, res
         else:
-            return None
+            return None, None
 
 if __name__ == '__main__':
     test()
