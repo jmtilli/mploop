@@ -1978,6 +1978,7 @@ int main(int argc, char **argv)
 	first = 1;
 	while (av_read_frame(avfctx, packet) >= 0) {
 		if (packet->stream_index == aidx) {
+#if LIBAVCODEC_VERSION_MAJOR > 57 || (LIBAVCODEC_VERSION_MAJOR == 57 && LIBAVCODEC_VERSION_MINOR >= 37)
 			if (first) {
 				avoid_state = AVOID_OPUS_MSG; // Avoid opus message "Could not update timestamps for skipped samples."
 			}
@@ -2005,6 +2006,18 @@ int main(int argc, char **argv)
 				output_audio_frame(frame);
 				av_frame_unref(frame);
 			}
+#else
+			int got_frame;
+			if (avcodec_decode_audio4(adecctx, frame, &got_frame, packet) < 0) {
+				fprintf(stderr, "Cannot decode audio, probably corrupted file\n");
+				handler_impl();
+				exit(1);
+			}
+			if (got_frame) {
+				output_audio_frame(frame);
+				av_frame_unref(frame);
+			}
+#endif
 		}
 		av_packet_unref(packet);
 		if (seeks != 0) {
