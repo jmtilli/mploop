@@ -415,7 +415,7 @@ void output_audio_frame(AVFrame *frame)
 	float mytime = ((float)frame->pts) * ((float)avfctx->streams[aidx]->time_base.num) / (float)avfctx->streams[aidx]->time_base.den;
 #else
 	pts = frame->pkt_pts;
-	float mytime = ((float)frame->pkt_pts) * ((float)adecctx->time_base.num) / (float)adecctx->time_base.den;
+	float mytime = ((float)frame->pkt_pts) * ((float)avfctx->streams[aidx]->time_base.num) / (float)avfctx->streams[aidx]->time_base.den;
 #endif
 	print_status("[V: %.1f] A: %.1f / %.1f", volume_db, mytime, duration);
 	fflush(stdout);
