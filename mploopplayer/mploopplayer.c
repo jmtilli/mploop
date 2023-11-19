@@ -1136,6 +1136,270 @@ void add_keyval(char *key, size_t keysz, char *val, size_t valsz)
 	}
 }
 
+uint32_t get_u32_le(const void *ptr)
+{
+	const char *cptr = ptr;
+	return
+		((uint8_t)cptr[0]) |
+		(((uint8_t)cptr[1])<<8) |
+		(((uint8_t)cptr[2])<<16) |
+		(((uint8_t)cptr[3])<<24);
+}
+
+void read_apetag(const char *fname)
+{
+	FILE *f;
+	char apefooter[32];
+	char apeheader[32];
+	char id3v1tag[128];
+	uint32_t apelen;
+	uint32_t apeitems;
+	//uint32_t apeflags;
+	uint32_t apelen2;
+	uint32_t apeitems2;
+	//uint32_t apeflags2;
+	long file_len;
+	int has_id3 = 0;
+	f = fopen(fname, "rb");
+	if (f == NULL)
+	{
+		return;
+	}
+	fseek(f, 0, SEEK_END);
+	file_len = ftell(f);
+	if (file_len < 0)
+	{
+		fclose(f);
+		return;
+	}
+	fseek(f, -32, SEEK_END);
+	if (fread(apefooter, 1, 32, f) != 32)
+	{
+		fclose(f);
+		return;
+	}
+	if (memcmp(apefooter, "APETAGEX", 8) != 0)
+	{
+		fseek(f, -128, SEEK_END);
+		if (fread(id3v1tag, 1, 128, f) != 128)
+		{
+			fclose(f);
+			return;
+		}
+		if (memcmp(id3v1tag, "TAG", 3) == 0)
+		{
+			has_id3 = 1;
+			fseek(f, -128-32, SEEK_END);
+			if (fread(apefooter, 1, 32, f) != 32)
+			{
+				fclose(f);
+				return;
+			}
+		}
+	}
+	if (memcmp(apefooter, "APETAGEX", 8) != 0)
+	{
+		fclose(f);
+		return;
+	}
+	if (get_u32_le(&apefooter[8]) != 2000)
+	{
+		fclose(f);
+		return;
+	}
+	apelen = get_u32_le(&apefooter[12]);
+	apeitems = get_u32_le(&apefooter[16]);
+	//apeflags = get_u32_le(&apefooter[20]);
+	if ((unsigned long)file_len < (unsigned long)apelen)
+	{
+		fclose(f);
+		return;
+	}
+	if ((unsigned long)file_len >= (unsigned long)apelen + (has_id3 ? (128+32) : 32))
+	{
+		uint32_t itemid;
+		fseek(f, -(long)apelen-(has_id3 ? (128+32) : 32), SEEK_END);
+		if (fread(apeheader, 1, 32, f) != 32)
+		{
+			fclose(f);
+			return;
+		}
+		if (memcmp(apeheader, "APETAGEX", 8) != 0)
+		{
+			fclose(f);
+			return;
+		}
+		if (get_u32_le(&apeheader[8]) != 2000)
+		{
+			fclose(f);
+			return;
+		}
+		apelen2 = get_u32_le(&apeheader[12]);
+		apeitems2 = get_u32_le(&apeheader[16]);
+		//apeflags2 = get_u32_le(&apeheader[20]);
+		if (apelen2 != apelen || apeitems2 != apeitems)
+		{
+			fclose(f);
+			return;
+		}
+		for (itemid = 0; itemid < apeitems2; itemid++)
+		{
+			char tagheader[8];
+			char *key = NULL;
+			char *val = NULL;
+			size_t keysz = 0;
+			size_t keycap = 0;
+			uint32_t taglen, tagflags;
+			if (fread(tagheader, 1, 8, f) != 8) {
+				fclose(f);
+				return;
+			}
+			taglen = get_u32_le(&tagheader[0]);
+			tagflags = get_u32_le(&tagheader[4]);
+			for (;;) {
+				int ret;
+				ret = getc(f);
+				if (ret == EOF) {
+					free(key);
+					fclose(f);
+					return;
+				}
+				if (keysz + 1 > keycap)
+				{
+					char *key2;
+					key2 = realloc(key, 2*keycap+16);
+					if (key2 == NULL)
+					{
+						fprintf(stderr, "Out of memory\n");
+						handler_impl();
+						exit(1);
+					}
+					keycap = 2*keycap+16;
+					key = key2;
+				}
+				if (ret == 0) {
+					key[keysz] = '\0';
+					break;
+				}
+				key[keysz++] = (char)ret;
+			}
+			val = malloc(taglen+1);
+			if (val == NULL)
+			{
+				fprintf(stderr, "Out of memory\n");
+				handler_impl();
+				exit(1);
+			}
+			val[taglen] = '\0';
+			if (fread(val, 1, taglen, f) != taglen)
+			{
+				free(key);
+				free(val);
+				fclose(f);
+				return;
+			}
+			if ((tagflags & 6) == 0) {
+				if (strcmp(key, "MP3GAIN_MINMAX") == 0 ||
+				    strcmp(key, "MP3GAIN_ALBUM_MINMAX") == 0 ||
+				    strcmp(key, "REPLAYGAIN_TRACK_PEAK") == 0 ||
+				    strcmp(key, "REPLAYGAIN_ALBUM_PEAK") == 0)
+				{
+					free(key);
+					free(val);
+					continue;
+				}
+				if (strcmp(key, "REPLAYGAIN_TRACK_GAIN") == 0)
+				{
+					char *endptr;
+					float tmp = strtof(val, &endptr);
+					if ((*endptr == '\0' ||
+					    strcmp(endptr, "dB") == 0 || strcmp(endptr, " dB") == 0 ||
+					    strcmp(endptr, "DB") == 0 || strcmp(endptr, " DB") == 0 ||
+					    strcmp(endptr, "db") == 0 || strcmp(endptr, " db") == 0) &&
+					    has_trackgain != 128)
+					{
+						trackgain = tmp + offset;
+						has_trackgain = 1;
+					}
+					free(key);
+					free(val);
+					continue;
+				}
+				if (strcmp(key, "REPLAYGAIN_ALBUM_GAIN") == 0)
+				{
+					char *endptr;
+					float tmp = strtof(val, &endptr);
+					if ((*endptr == '\0' ||
+					    strcmp(endptr, "dB") == 0 || strcmp(endptr, " dB") == 0 ||
+					    strcmp(endptr, "DB") == 0 || strcmp(endptr, " DB") == 0 ||
+					    strcmp(endptr, "db") == 0 || strcmp(endptr, " db") == 0) &&
+					    has_albumgain != 128)
+					{
+						albumgain = tmp + offset;
+						has_albumgain = 1;
+					}
+					// Track => Tracknumber
+					free(key);
+					free(val);
+					continue;
+				}
+				if (strcasecmp(key, "album") == 0)
+				{
+					const char *key2 = "ALBUM";
+					add_keyval(key2, strlen(key2), val, taglen);
+					free(key);
+					free(val);
+					continue;
+				}
+				if (strcasecmp(key, "artist") == 0)
+				{
+					const char *key2 = "ARTIST";
+					add_keyval(key2, strlen(key2), val, taglen);
+					free(key);
+					free(val);
+					continue;
+				}
+				if (strcasecmp(key, "genre") == 0)
+				{
+					const char *key2 = "GENRE";
+					add_keyval(key2, strlen(key2), val, taglen);
+					free(key);
+					free(val);
+					continue;
+				}
+				if (strcasecmp(key, "title") == 0)
+				{
+					const char *key2 = "TITLE";
+					add_keyval(key2, strlen(key2), val, taglen);
+					free(key);
+					free(val);
+					continue;
+				}
+				if (strcasecmp(key, "year") == 0)
+				{
+					const char *key2 = "YEAR";
+					add_keyval(key2, strlen(key2), val, taglen);
+					free(key);
+					free(val);
+					continue;
+				}
+				if (strcasecmp(key, "track") == 0)
+				{
+					const char *key2 = "TRACKNUMBER";
+					add_keyval(key2, strlen(key2), val, taglen);
+					free(key);
+					free(val);
+					continue;
+				}
+				add_keyval(key, strlen(key), val, taglen);
+			}
+			free(key);
+			free(val);
+		}
+	}
+	fclose(f);
+}
+
 int main(int argc, char **argv)
 {
 	int ret;
@@ -1280,6 +1544,11 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 	aidx = ret;
+
+	if (!urlmode) {
+		read_apetag(argv[optind]);
+	}
+
 	AVDictionary *whole_file_metadata = avfctx->metadata;
 	AVDictionary *stream_metadata = avfctx->streams[aidx]->metadata;
 	const AVDictionaryEntry *e = NULL;
