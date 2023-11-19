@@ -664,6 +664,8 @@ def get_ape(fname):
             apeheader = f.read(32)
             if len(apeheader) != 32:
                 return None, None
+            if apeheader[0:8] != b"APETAGEX":
+                return None, None
             apeversion2 = apeheader[8:12]
             if struct.unpack("<I", apeversion2)[0] != 2000:
                 return None, None
