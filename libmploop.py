@@ -541,7 +541,8 @@ def get_gain(ln):
             apetags = [x for x in apetags if x[0] not in todel]
         id3gain, id3v2tags = libtag.get_id3v2(ln)
         if mploopplayer:
-            tags = apetags or []
+            #tags = apetags or []
+            tags = []
         else:
             tags = id3v2tags or apetags or id3v1tags or []
         if id3gain and "ALBUM" in id3gain:
