@@ -1432,7 +1432,9 @@ int main(int argc, char **argv)
 	AVFrame *frame = NULL;
 	AVPacket *packet = NULL;
 	int opt;
+	FILE *npf = NULL;
 	char *endptr;
+	char *writenp = NULL;
 	size_t fnamebuflen;
 	char *fnamebuf;
 	const char *homedir;
@@ -1449,7 +1451,7 @@ int main(int argc, char **argv)
 	AVStream *audio_stream;
 #endif
 
-	while ((opt = getopt(argc, argv, "us:g:G")) != -1) {
+	while ((opt = getopt(argc, argv, "us:g:GW:")) != -1) {
 		switch (opt) {
 			case 'u':
 				urlmode = 1;
@@ -1460,6 +1462,9 @@ int main(int argc, char **argv)
 				break;
 			case 'G':
 				usegain = 1;
+				break;
+			case 'W':
+				writenp = optarg;
 				break;
 			case 'g':
 				if (!optarg)
@@ -1637,6 +1642,14 @@ int main(int argc, char **argv)
 		printf("Applying gain: %.2f dB\n", gain_db);
 	}
 	printf("File: %s\n", argv[optind]);
+	if (writenp)
+	{
+		npf = fopen(writenp, "w");
+		if (npf != NULL)
+		{
+			fprintf(npf, "FILE=%s\n", argv[optind]);
+		}
+	}
 	e = NULL;
 	//printf("Whole file metadata\n");
 	while ((e = av_dict_get(whole_file_metadata, "", e, AV_DICT_IGNORE_SUFFIX)) != NULL) {
@@ -1646,6 +1659,10 @@ int main(int argc, char **argv)
 			continue;
 		}
 		vkey = get_vorbiskey(e->key, NULL);
+		if (npf != NULL)
+		{
+			fprintf(npf, "%s=%s\n", vkey, e->value);
+		}
 		vkey = mangle_vorbiskey(vkey, &colon);
 		if (*vkey) {
 			printf("%c", toupper(*vkey));
@@ -1670,6 +1687,10 @@ int main(int argc, char **argv)
 			continue;
 		}
 		vkey = get_vorbiskey(e->key, NULL);
+		if (npf != NULL)
+		{
+			fprintf(npf, "%s=%s\n", vkey, e->value);
+		}
 		vkey = mangle_vorbiskey(vkey, &colon);
 		if (*vkey) {
 			printf("%c", toupper(*vkey));
@@ -1689,6 +1710,10 @@ int main(int argc, char **argv)
 	while (cur != NULL) {
 		const char *vkey;
 		int colon;
+		if (npf != NULL)
+		{
+			fprintf(npf, "%s=%s\n", cur->key, cur->val);
+		}
 		vkey = mangle_vorbiskey(cur->key, &colon);
 		if (*vkey) {
 			printf("%c", toupper(*vkey));
@@ -1704,6 +1729,10 @@ int main(int argc, char **argv)
 		printf(" ");
 		printf("%s\n", cur->val);
 		cur = cur->next;
+	}
+	if (npf != NULL)
+	{
+		fclose(npf);
 	}
 	printf("--------------------------------------------------------------------------------\n");
 #if LIBAVCODEC_VERSION_MAJOR > 57 || (LIBAVCODEC_VERSION_MAJOR == 57 && LIBAVCODEC_VERSION_MINOR >= 25)

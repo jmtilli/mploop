@@ -90,22 +90,24 @@ try:
                 pretty = k[0:1].upper() + k[1:].lower() + ':'
             v = comment[1]
             print(pretty + ' ' + v)
-        with open(os.path.expanduser('~') + '/.mploop/np.txt', "w") as f:
-            if hasattr(rawln, "decode"): # Python 2
-                f.write(("FILE=" + rawln.decode("utf-8") + '\n' + '\n'.join(c[0] + "=" + c[1] for c in comments) + '\n').encode("utf-8"))
-            else: # Python 3
-                f.write("FILE=" + rawln + '\n' + '\n'.join(c[0] + "=" + c[1] for c in comments) + '\n')
+        if not libmploop.mploopplayer:
+            with open(os.path.expanduser('~') + '/.mploop/np.txt', "w") as f:
+                if hasattr(rawln, "decode"): # Python 2
+                    f.write(("FILE=" + rawln.decode("utf-8") + '\n' + '\n'.join(c[0] + "=" + c[1] for c in comments) + '\n').encode("utf-8"))
+                else: # Python 3
+                    f.write("FILE=" + rawln + '\n' + '\n'.join(c[0] + "=" + c[1] for c in comments) + '\n')
         toclear=True
         if not libmploop.mploopplayer:
             print(80*"-")
         if libmploop.mploopplayer:
             urlargs = []
+            npf = os.path.expanduser('~') + '/.mploop/np.txt'
             if ln and ln[0] != '/':
                 urlargs = ["-u"]
             if hasgain:
-                proc = subprocess.Popen([libmploop.mploopplayer] + urlargs + ["-s", libmploop.sockexpanded, "-g", str(gain-offset2-mploopplayer_extraoffset), "--", ln])
+                proc = subprocess.Popen([libmploop.mploopplayer] + urlargs + ["-s", libmploop.sockexpanded, "-W", npf, "-g", str(gain-offset2-mploopplayer_extraoffset), "--", ln])
             else:
-                proc = subprocess.Popen([libmploop.mploopplayer] + urlargs + ["-s", libmploop.sockexpanded, "-G", "-g", str(0.0-offset2-mploopplayer_extraoffset), "--", ln])
+                proc = subprocess.Popen([libmploop.mploopplayer] + urlargs + ["-s", libmploop.sockexpanded, "-G", "-W", npf, "-g", str(0.0-offset2-mploopplayer_extraoffset), "--", ln])
             with open(libmploop.mploopplayerpidexpanded, 'w') as f:
                 f.write(str(proc.pid) + '\n')
             proc.wait()
