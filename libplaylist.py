@@ -151,7 +151,10 @@ def get_pls_playlist(x):
     dirnam = os.path.dirname(x)
     with open(x, "r") as f:
         while True:
-            l = f.readline(MAX_LINE)
+            try:
+                l = f.readline(MAX_LINE)
+            except UnicodeDecodeError:
+                return None
             if len(l) == 0:
                 res = []
                 if number_of_entries < 1:
@@ -202,7 +205,10 @@ def get_m3u_playlist(x):
     res = []
     with open(x, "r") as f:
         while True:
-            l = f.readline(MAX_LINE)
+            try:
+                l = f.readline(MAX_LINE)
+            except UnicodeDecodeError:
+                return None
             if len(l) == 0:
                 if res:
                     return res
