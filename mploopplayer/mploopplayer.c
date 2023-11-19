@@ -2037,9 +2037,11 @@ int main(int argc, char **argv)
 			break;
 		}
 	}
+#if LIBAVCODEC_VERSION_MAJOR > 57 || (LIBAVCODEC_VERSION_MAJOR == 57 && LIBAVCODEC_VERSION_MINOR >= 37)
 	if (adecctx) {
 		ret = avcodec_send_packet(adecctx, NULL);
 	}
+#endif
 	bytes_per_sec = (uint32_t)(obtained.freq*obtained.channels*obtained_data_size);
 	while ((inqueue = (uint32_t)SDL_GetQueuedAudioSize(audid)) > 0) {
 		usleep((useconds_t)(inqueue*0.9e6/bytes_per_sec)+300);
