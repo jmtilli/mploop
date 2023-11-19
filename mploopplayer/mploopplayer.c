@@ -1089,6 +1089,53 @@ const char *get_vorbiskey(const char *key, const char *value)
 // skip: REPLAYGAIN_ALBUM_PEAK, REPLAYGAIN_TRACK_PEAK, replaygain_track_peak, replaygain_track_minmax, replaygain_album_peak, replaygain_album_minmax
 // others: convert to uppercase
 
+struct KeyVal {
+	char *key;
+	char *val;
+	struct KeyVal *next;
+};
+
+struct KeyVal *first_kv = NULL;
+struct KeyVal *last_kv = NULL;
+
+void add_keyval(char *key, size_t keysz, char *val, size_t valsz)
+{
+	struct KeyVal *cur;
+	cur = malloc(sizeof(*cur));
+	if (cur == NULL) {
+		fprintf(stderr, "Out of memory\n");
+		handler_impl();
+		exit(1);
+	}
+	cur->key = malloc(keysz+1);
+	if (cur->key == NULL) {
+		fprintf(stderr, "Out of memory\n");
+		handler_impl();
+		exit(1);
+	}
+	cur->val = malloc(valsz+1);
+	if (cur->val == NULL) {
+		fprintf(stderr, "Out of memory\n");
+		handler_impl();
+		exit(1);
+	}
+	memcpy(cur->key, key, keysz);
+	cur->key[keysz] = '\0';
+	memcpy(cur->val, val, valsz);
+	cur->val[valsz] = '\0';
+	cur->next = NULL;
+	if (first_kv == NULL)
+	{
+		first_kv = cur;
+		last_kv = cur;
+	}
+	else
+	{
+		last_kv->next = cur;
+		last_kv = cur;
+	}
+}
+
 int main(int argc, char **argv)
 {
 	int ret;
@@ -1108,6 +1155,7 @@ int main(int argc, char **argv)
 	struct sockaddr_un sun;
 	uint32_t inqueue;
 	uint32_t bytes_per_sec;
+	struct KeyVal *cur;
 #if 0
 	AVStream *audio_stream;
 #endif
@@ -1338,6 +1386,26 @@ int main(int argc, char **argv)
 		}
 		printf(" ");
 		printf("%s\n", e->value);
+	}
+	cur = first_kv;
+	while (cur != NULL) {
+		const char *vkey;
+		int colon;
+		vkey = mangle_vorbiskey(cur->key, &colon);
+		if (*vkey) {
+			printf("%c", toupper(*vkey));
+			vkey++;
+		}
+		while (*vkey) {
+			printf("%c", tolower(*vkey));
+			vkey++;
+		}
+		if (colon) {
+			printf(":");
+		}
+		printf(" ");
+		printf("%s\n", cur->val);
+		cur = cur->next;
 	}
 	printf("--------------------------------------------------------------------------------\n");
 	dec = avcodec_find_decoder(avfctx->streams[aidx]->codecpar->codec_id);
