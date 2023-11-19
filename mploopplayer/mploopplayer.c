@@ -1098,7 +1098,7 @@ struct KeyVal {
 struct KeyVal *first_kv = NULL;
 struct KeyVal *last_kv = NULL;
 
-void add_keyval(char *key, size_t keysz, char *val, size_t valsz)
+void add_keyval(const char *key, size_t keysz, const char *val, size_t valsz)
 {
 	struct KeyVal *cur;
 	cur = malloc(sizeof(*cur));
