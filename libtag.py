@@ -603,25 +603,25 @@ def get_id3v2(fname):
     with open(fname, "rb") as f:
         id3header = f.read(10)
         if len(id3header) != 10:
-            return None
+            return None, None
         if id3header[0:3] != b"ID3":
-            return None
+            return None, None
         version = struct.unpack("B", id3header[3:4])[0]
         if version == 0xFF:
-            return None
+            return None, None
         revision = struct.unpack("B", id3header[4:5])[0]
         if revision == 0xFF:
-            return None
+            return None, None
         flags = struct.unpack("B", id3header[5:6])[0]
         sizebytes = struct.unpack("BBBB", id3header[6:10])
         if sizebytes[0]>>7:
-            return None
+            return None, None
         if sizebytes[1]>>7:
-            return None
+            return None, None
         if sizebytes[2]>>7:
-            return None
+            return None, None
         if sizebytes[3]>>7:
-            return None
+            return None, None
         size = (sizebytes[0]<<21)|(sizebytes[1]<<14)|(sizebytes[2]<<7)|(sizebytes[3])
         if version == 4:
             return get_id3v2_4(fname)
