@@ -26,7 +26,11 @@ int rightidx = -1;
 SDL_AudioDeviceID audid;
 SDL_AudioSpec obtained;
 AVCodecContext *adecctx;
+#if SDL_MAJOR_VERSION > 2 || (SDL_MAJOR_VERSION == 2 && SDL_MINOR_VERSION > 0) || (SDL_MAJOR_VERSION == 2 && SDL_MINOR_VERSION == 0 && SDL_PATCHLEVEL >= 7)
 SDL_AudioStream *sdl_stream;
+#else
+SDL_AudioCVT cvt;
+#endif
 int audio_frame_count;
 int chcount;
 int data_size;
@@ -517,6 +521,7 @@ void output_audio_frame(AVFrame *frame)
 		}
 	}
 	//printf("Bufloc %d\n", bufloc);
+#if SDL_MAJOR_VERSION > 2 || (SDL_MAJOR_VERSION == 2 && SDL_MINOR_VERSION > 0) || (SDL_MAJOR_VERSION == 2 && SDL_MINOR_VERSION == 0 && SDL_PATCHLEVEL >= 7)
 	int ret = SDL_AudioStreamPut(sdl_stream, buf, bufloc);
 	if (ret < 0) {
 		fprintf(stderr, "Cannot put data to SDL audio stream\n");
@@ -525,6 +530,13 @@ void output_audio_frame(AVFrame *frame)
 	}
 	//int avail = SDL_AudioStreamAvailable(sdl_stream);
 	int gotten = SDL_AudioStreamGet(sdl_stream, buf, sizeof(buf));
+#else
+	int ret;
+	cvt.len = bufloc;
+	cvt.buf = (uint8_t*)buf;
+	SDL_ConvertAudio(&cvt);
+	int gotten = cvt.len_cvt;
+#endif
 	//printf("Gotten %d\n", gotten);
 	uint32_t bytes_per_sec = (uint32_t)(obtained.freq*obtained.channels*obtained_data_size);
 	uint32_t target_samples = (uint32_t)(0.15*bytes_per_sec);
@@ -1938,7 +1950,11 @@ int main(int argc, char **argv)
 		handler_impl();
 		exit(1);
 	}
+#if SDL_MAJOR_VERSION > 2 || (SDL_MAJOR_VERSION == 2 && SDL_MINOR_VERSION > 0) || (SDL_MAJOR_VERSION == 2 && SDL_MINOR_VERSION == 0 && SDL_PATCHLEVEL >= 7)
 	sdl_stream = SDL_NewAudioStream(audio_format_as_sdl, chcount > 2 ? 2 : chcount, adecctx->sample_rate, obtained.format, obtained.channels, obtained.freq);
+#else
+	SDL_BuildAudioCVT(&cvt, audio_format_as_sdl, chcount > 2 ? 2 : chcount, adecctx->sample_rate, obtained.format, obtained.channels, obtained.freq);
+#endif
 	if (obtained.format == AUDIO_S32 || obtained.format == AUDIO_S32LSB || obtained.format == AUDIO_S32MSB || obtained.format == AUDIO_S32SYS || obtained.format == AUDIO_F32 || obtained.format == AUDIO_F32LSB || obtained.format == AUDIO_F32MSB || obtained.format == AUDIO_F32SYS) {
 		obtained_data_size = 4;
 	}
