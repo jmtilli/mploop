@@ -610,7 +610,11 @@ void log_cb(void *avcl, int level, const char *fmt, va_list ap)
 	va_copy(ap3, ap);
 	va_copy(ap4, ap);
 	rawlinesize = vsnprintf(NULL, 0, fmt, ap);
+#if LIBAVUTIL_VERSION_MAJOR > 55 || (LIBAVUTIL_VERSION_MAJOR == 55 && LIBAVUTIL_VERSION_MINOR >= 23)
 	linesize = av_log_format_line2(avcl, level, fmt, ap2, NULL, 0, &print_prefix);
+#else
+	linesize = rawlinesize+2048;
+#endif
 	va_end(ap2);
 	if (linesize < 0) {
 		fprintf(stderr, "Error when logging\n");
@@ -631,11 +635,15 @@ void log_cb(void *avcl, int level, const char *fmt, va_list ap)
 		handler_impl();
 		exit(1);
 	}
+#if LIBAVUTIL_VERSION_MAJOR > 55 || (LIBAVUTIL_VERSION_MAJOR == 55 && LIBAVUTIL_VERSION_MINOR >= 23)
 	if (av_log_format_line2(avcl, level, fmt, ap3, linebuf, linesize+1, &print_prefix) < 0) {
 		fprintf(stderr, "Error when logging\n");
 		handler_impl();
 		exit(1);
 	}
+#else
+	av_log_format_line(avcl, level, fmt, ap3, linebuf, linesize+1, &print_prefix);
+#endif
 	va_end(ap3);
 	if (vsnprintf(rawlinebuf, rawlinesize+1, fmt, ap4) < 0) {
 		fprintf(stderr, "Error when logging\n");
