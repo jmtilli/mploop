@@ -1171,6 +1171,664 @@ uint32_t get_u32_le(const void *ptr)
 		(((uint8_t)cptr[3])<<24);
 }
 
+uint32_t decode_syncsafe(const void *ptr)
+{
+	const char *cptr = ptr;
+	return (((uint32_t)(uint8_t)cptr[0])<<21)
+	     | (((uint32_t)(uint8_t)cptr[1])<<14)
+	     | (((uint32_t)(uint8_t)cptr[2])<<7)
+	     | (((uint32_t)(uint8_t)cptr[3])<<0);
+}
+
+int fskip(FILE *f, size_t sz)
+{
+	size_t i;
+	for (i = 0; i < sz; i++)
+	{
+		int ch;
+		ch = getc(f);
+		if (ch == EOF)
+		{
+			return 0;
+		}
+	}
+	return 1;
+}
+
+int maybe_unsync_read(FILE *f, int unsync, void *buf, size_t sz)
+{
+	char *cbufstart = buf;
+	char *cbuf = buf;
+	int cur_unsync = 0;
+	if (!unsync)
+	{
+		return fread(buf, 1, sz, f) == sz;
+	}
+	else
+	{
+		while ((size_t)(cbuf - cbufstart) < sz)
+		{
+			int ch;
+			ch = getc(f);
+			if (ch == EOF)
+			{
+				return 0;
+			}
+			if (!cur_unsync &&
+			    cbuf - cbufstart > 0 && *(cbuf-1) == '\xff' &&
+			    ch == '\x00')
+			{
+				cur_unsync = 1;
+			}
+			else
+			{
+				*cbuf++ = (uint8_t)ch;
+				cur_unsync = 0;
+			}
+		}
+		return 1;
+	}
+}
+
+size_t u16cmp(char *frame, size_t framesz, const char *key, size_t keysz)
+{
+	size_t i;
+	if (frame[0] == '\x00' || frame[0] == '\x03')
+	{
+		if (memcmp(frame+1, key, keysz) != 0)
+		{
+			return 0;
+		}
+		memmove(frame, frame+1+keysz, (framesz-1-keysz));
+		return framesz-1-keysz;
+	}
+	if (frame[0] == '\x02' && framesz >= 3 && (frame[1] != '\xfe' || frame[2] != '\xff'))
+	{
+		if (framesz-1 < 2*keysz)
+		{
+			return 0;
+		}
+		for (i = 0; i < keysz; i++)
+		{
+			if (frame[1+2*i+0] != '\x00' ||
+			    frame[1+2*i+1] != key[i])
+
+			{
+				return 0;
+			}
+		}
+		for (i = 0; i < (framesz-1-2*keysz)/2; i++)
+		{
+			if (frame[1+2*keysz+2*i+0] != '\x00')
+			{
+				return 0;
+			}
+			frame[i] = frame[1+2*keysz+2*i+1];
+		}
+		return (framesz-1-2*keysz)/2;
+	}
+	if ((frame[0] == '\x01' || frame[0] == '\x02') && framesz >= 3 && (frame[1] != '\xfe' || frame[2] != '\xff'))
+	{
+		if (framesz-3 < 2*keysz)
+		{
+			return 0;
+		}
+		for (i = 0; i < keysz; i++)
+		{
+			if (frame[3+2*i+0] != '\x00' ||
+			    frame[3+2*i+1] != key[i])
+
+			{
+				return 0;
+			}
+		}
+		for (i = 0; i < (framesz-3-2*keysz)/2; i++)
+		{
+			if (frame[3+2*keysz+2*i+0] != '\x00')
+			{
+				return 0;
+			}
+			frame[i] = frame[3+2*keysz+2*i+1];
+		}
+		return (framesz-3-2*keysz)/2;
+	}
+	if ((frame[0] == '\x01') && framesz >= 3 && frame[1] == '\xff' && frame[2] == '\xfe')
+	{
+		if (framesz-3 < 2*keysz)
+		{
+			return 0;
+		}
+		for (i = 0; i < keysz; i++)
+		{
+			if (frame[3+2*i+0] != key[i] ||
+			    frame[3+2*i+1] != '\x00')
+
+			{
+				return 0;
+			}
+		}
+		for (i = 0; i < (framesz-3-2*keysz)/2; i++)
+		{
+			if (frame[3+2*keysz+2*i+1] != '\x00')
+			{
+				return 0;
+			}
+			frame[i] = frame[3+2*keysz+2*i+0];
+		}
+		return (framesz-3-2*keysz)/2;
+	}
+	return 0;
+}
+
+void read_id3v24tag(FILE *f)
+{
+	char id3header5[5];
+	uint8_t flags;
+	uint32_t size;
+	int unsync_all;
+	int experimental;
+	int exthdr;
+	int footerpresent;
+	if (fread(id3header5, 1, 5, f) != 5)
+	{
+		return;
+	}
+	flags = (uint8_t)id3header5[0];
+	if ((id3header5[1]>>7) || 
+	    (id3header5[2]>>7) ||
+	    (id3header5[3]>>7) ||
+	    (id3header5[4]>>7))
+	{
+		return;
+	}
+	size = decode_syncsafe(&id3header5[1]);
+	unsync_all = (flags>>7)&1;
+	exthdr = (flags>>6)&1;
+	experimental = (flags>>5)&1;
+	footerpresent = (flags>>4)&1;
+	if (flags&15)
+	{
+		return;
+	}
+	if (exthdr)
+	{
+		char exthdr[4];
+		uint32_t sz;
+		if (fread(exthdr, 1, 4, f) != 4)
+		{
+			return;
+		}
+		sz = decode_syncsafe(exthdr);
+		if (!fskip(f, sz))
+		{
+			return;
+		}
+	}
+	for (;;)
+	{
+		char framehdr[10];
+		char *frame;
+		uint32_t framesz;
+		uint16_t flags;
+		int grouping_identity;
+		int compression;
+		int encryption;
+		int frame_unsync;
+		int data_length;
+		if (ftell(f) > size+10)
+		{
+			return;
+		}
+		if (fread(framehdr, 1, 10, f) != 10)
+		{
+			return;
+		}
+		if (ftell(f) > size+10)
+		{
+			return;
+		}
+		framesz = decode_syncsafe(&framehdr[4]);
+		flags =
+			(((uint16_t)(uint8_t)framehdr[8]) << 8) |
+			(((uint16_t)(uint8_t)framehdr[9]) << 0);
+		grouping_identity = (flags >> 6)&1;
+		compression = (flags >> 3)&1;
+		encryption = (flags >> 2)&1;
+		frame_unsync = (flags >> 1)&1;
+		data_length = (flags >> 0)&1;
+		if (data_length)
+		{
+			if (framesz < 4)
+			{
+				return;
+			}
+			fskip(f, 4);
+			framesz -= 4;
+		}
+		frame = malloc(framesz+1);
+		if (!frame)
+		{
+			fprintf(stderr, "Out of memory\n");
+			handler_impl();
+			exit(1);
+		}
+		if (!maybe_unsync_read(f, unsync_all || frame_unsync, frame, framesz))
+		{
+			free(frame);
+			return;
+		}
+		if (ftell(f) > size+10)
+		{
+			free(frame);
+			return;
+		}
+		if (grouping_identity)
+		{
+			free(frame); // don't know how to handle this
+			continue;
+		}
+		if (compression || encryption)
+		{
+			free(frame);
+			continue;
+		}
+		if (data_length)
+		{
+			free(frame); // probably compressed or encrypted
+			continue;
+		}
+		if (memcmp(framehdr, "TXXX", 4) != 0)
+		{
+			free(frame);
+			continue;
+		}
+		if (framesz && (frame[0] == '\x00' || frame[0] == '\x01' || frame[0] == '\x02'))
+		{
+			char *x;
+			size_t res;
+			size_t xsz;
+			x = "replaygain_reference_loudness";
+			xsz = strlen(x);
+			res = u16cmp(frame, framesz, x, xsz+1);
+			if (res)
+			{
+				char *endptr = NULL;
+				float ref_loudness;
+				frame[res] = '\0';
+				ref_loudness = strtof(frame, &endptr);
+				if (*endptr == '\x00' || strcmp(endptr, "dB") == 0 || strcmp(endptr, " dB") == 0)
+				{
+					ref = ref_loudness;
+				}
+				free(frame);
+				continue;
+			}
+			x = "replaygain_track_gain";
+			xsz = strlen(x);
+			res = u16cmp(frame, framesz, x, xsz+1);
+			if (res)
+			{
+				char *endptr = NULL;
+				float track_gain;
+				frame[res] = '\0';
+				track_gain = strtof(frame, &endptr);
+				if (*endptr == '\x00' || strcmp(endptr, "dB") == 0 || strcmp(endptr, " dB") == 0)
+				{
+					trackgain = track_gain + offset;
+					has_trackgain = 1;
+				}
+				free(frame);
+				continue;
+			}
+			x = "replaygain_album_gain";
+			xsz = strlen(x);
+			res = u16cmp(frame, framesz, x, xsz+1);
+			if (res)
+			{
+				char *endptr = NULL;
+				float album_gain;
+				frame[res] = '\0';
+				album_gain = strtof(frame, &endptr);
+				if (*endptr == '\x00' || strcmp(endptr, "dB") == 0 || strcmp(endptr, " dB") == 0)
+				{
+					albumgain = album_gain + offset;
+					has_albumgain = 1;
+				}
+				free(frame);
+				continue;
+			}
+		}
+		free(frame);
+	}
+}
+
+void read_id3v23tag(FILE *f)
+{
+	char id3header5[5];
+	uint8_t flags;
+	uint32_t size;
+	int unsync;
+	int experimental;
+	int exthdr;
+	if (fread(id3header5, 1, 5, f) != 5)
+	{
+		return;
+	}
+	flags = (uint8_t)id3header5[0];
+	if ((id3header5[1]>>7) || 
+	    (id3header5[2]>>7) ||
+	    (id3header5[3]>>7) ||
+	    (id3header5[4]>>7))
+	{
+		return;
+	}
+	size = decode_syncsafe(&id3header5[1]);
+	unsync = (flags>>7)&1;
+	exthdr = (flags>>6)&1;
+	experimental = (flags>>5)&1;
+	if (flags&31)
+	{
+		return;
+	}
+	if (exthdr)
+	{
+		char exthdr[4];
+		char exthdr2[10];
+		uint32_t sz;
+		if (!maybe_unsync_read(f, unsync, exthdr, 4))
+		{
+			return;
+		}
+		sz = 
+			(((uint32_t)(uint8_t)exthdr[0])<<24) |
+			(((uint32_t)(uint8_t)exthdr[1])<<16) |
+			(((uint32_t)(uint8_t)exthdr[2])<<8) |
+			(((uint32_t)(uint8_t)exthdr[3])<<0);
+		if (sz != 6 && sz != 10)
+		{
+			return;
+		}
+		if (!maybe_unsync_read(f, unsync, exthdr2, sz))
+		{
+			return;
+		}
+	}
+	for (;;)
+	{
+		char framehdr[10];
+		char *frame;
+		uint32_t framesz;
+		uint16_t flags;
+		if (ftell(f) > size+10)
+		{
+			return;
+		}
+		if (!maybe_unsync_read(f, unsync, framehdr, 10))
+		{
+			return;
+		}
+		if (ftell(f) > size+10)
+		{
+			return;
+		}
+		framesz =
+			(((uint32_t)(uint8_t)framehdr[4]) << 24) |
+			(((uint32_t)(uint8_t)framehdr[5]) << 16) |
+			(((uint32_t)(uint8_t)framehdr[6]) << 8) |
+			(((uint32_t)(uint8_t)framehdr[7]) << 0);
+		flags =
+			(((uint16_t)(uint8_t)framehdr[8]) << 8) |
+			(((uint16_t)(uint8_t)framehdr[9]) << 0);
+		frame = malloc(framesz+1);
+		if (!frame)
+		{
+			fprintf(stderr, "Out of memory\n");
+			handler_impl();
+			exit(1);
+		}
+		if (!maybe_unsync_read(f, unsync, frame, framesz))
+		{
+			free(frame);
+			return;
+		}
+		if (ftell(f) > size+10)
+		{
+			free(frame);
+			return;
+		}
+		if (memcmp(framehdr, "TXXX", 4) != 0)
+		{
+			free(frame);
+			continue;
+		}
+		if (framesz && (frame[0] == '\x00' || frame[0] == '\x01' || frame[0] == '\x02'))
+		{
+			char *x;
+			size_t res;
+			size_t xsz;
+			x = "replaygain_reference_loudness";
+			xsz = strlen(x);
+			res = u16cmp(frame, framesz, x, xsz+1);
+			if (res)
+			{
+				char *endptr = NULL;
+				float ref_loudness;
+				frame[res] = '\0';
+				ref_loudness = strtof(frame, &endptr);
+				if (*endptr == '\x00' || strcmp(endptr, "dB") == 0 || strcmp(endptr, " dB") == 0)
+				{
+					ref = ref_loudness;
+				}
+				free(frame);
+				continue;
+			}
+			x = "replaygain_track_gain";
+			xsz = strlen(x);
+			res = u16cmp(frame, framesz, x, xsz+1);
+			if (res)
+			{
+				char *endptr = NULL;
+				float track_gain;
+				frame[res] = '\0';
+				track_gain = strtof(frame, &endptr);
+				if (*endptr == '\x00' || strcmp(endptr, "dB") == 0 || strcmp(endptr, " dB") == 0)
+				{
+					trackgain = track_gain + offset;
+					has_trackgain = 1;
+				}
+				free(frame);
+				continue;
+			}
+			x = "replaygain_album_gain";
+			xsz = strlen(x);
+			res = u16cmp(frame, framesz, x, xsz+1);
+			if (res)
+			{
+				char *endptr = NULL;
+				float album_gain;
+				frame[res] = '\0';
+				album_gain = strtof(frame, &endptr);
+				if (*endptr == '\x00' || strcmp(endptr, "dB") == 0 || strcmp(endptr, " dB") == 0)
+				{
+					albumgain = album_gain + offset;
+					has_albumgain = 1;
+				}
+				free(frame);
+				continue;
+			}
+		}
+		free(frame);
+	}
+}
+
+void read_id3v22tag(FILE *f)
+{
+	char id3header5[5];
+	uint8_t flags;
+	uint32_t size;
+	int unsync;
+	int compression;
+	if (fread(id3header5, 1, 5, f) != 5)
+	{
+		return;
+	}
+	flags = (uint8_t)id3header5[0];
+	if ((id3header5[1]>>7) || 
+	    (id3header5[2]>>7) ||
+	    (id3header5[3]>>7) ||
+	    (id3header5[4]>>7))
+	{
+		return;
+	}
+	size = decode_syncsafe(&id3header5[1]);
+	unsync = (flags>>7)&1;
+	compression = (flags>>6)&1;
+	if (compression)
+	{
+		return;
+	}
+	if (flags&63)
+	{
+		return;
+	}
+	for (;;)
+	{
+		char framehdr[6];
+		char *frame;
+		uint32_t framesz;
+		if (ftell(f) > size+10)
+		{
+			return;
+		}
+		if (!maybe_unsync_read(f, unsync, framehdr, 6))
+		{
+			return;
+		}
+		if (ftell(f) > size+10)
+		{
+			return;
+		}
+		framesz =
+			(((uint32_t)(uint8_t)framehdr[3]) << 16) |
+			(((uint32_t)(uint8_t)framehdr[4]) << 8) |
+			(((uint32_t)(uint8_t)framehdr[5]) << 0);
+		frame = malloc(framesz+1);
+		if (!frame)
+		{
+			fprintf(stderr, "Out of memory\n");
+			handler_impl();
+			exit(1);
+		}
+		if (!maybe_unsync_read(f, unsync, frame, framesz))
+		{
+			free(frame);
+			return;
+		}
+		if (ftell(f) > size+10)
+		{
+			free(frame);
+			return;
+		}
+		if (memcmp(framehdr, "TXX", 3) != 0)
+		{
+			free(frame);
+			continue;
+		}
+		if (framesz && (frame[0] == '\x00' || frame[0] == '\x01'))
+		{
+			char *x;
+			size_t res;
+			size_t xsz;
+			x = "replaygain_reference_loudness";
+			xsz = strlen(x);
+			res = u16cmp(frame, framesz, x, xsz+1);
+			if (res)
+			{
+				char *endptr = NULL;
+				float ref_loudness;
+				frame[res] = '\0';
+				ref_loudness = strtof(frame, &endptr);
+				if (*endptr == '\x00' || strcmp(endptr, "dB") == 0 || strcmp(endptr, " dB") == 0)
+				{
+					ref = ref_loudness;
+				}
+				free(frame);
+				continue;
+			}
+			x = "replaygain_track_gain";
+			xsz = strlen(x);
+			res = u16cmp(frame, framesz, x, xsz+1);
+			if (res)
+			{
+				char *endptr = NULL;
+				float track_gain;
+				frame[res] = '\0';
+				track_gain = strtof(frame, &endptr);
+				if (*endptr == '\x00' || strcmp(endptr, "dB") == 0 || strcmp(endptr, " dB") == 0)
+				{
+					trackgain = track_gain + offset;
+					has_trackgain = 1;
+				}
+				free(frame);
+				continue;
+			}
+			x = "replaygain_album_gain";
+			xsz = strlen(x);
+			res = u16cmp(frame, framesz, x, xsz+1);
+			if (res)
+			{
+				char *endptr = NULL;
+				float album_gain;
+				frame[res] = '\0';
+				album_gain = strtof(frame, &endptr);
+				if (*endptr == '\x00' || strcmp(endptr, "dB") == 0 || strcmp(endptr, " dB") == 0)
+				{
+					albumgain = album_gain + offset;
+					has_albumgain = 1;
+				}
+				free(frame);
+				continue;
+			}
+		}
+		free(frame);
+	}
+}
+
+
+void read_id3v2tag(const char *fname)
+{
+	char id3header[5];
+	FILE *f;
+	f = fopen(fname, "rb");
+	if (f == NULL)
+	{
+		return;
+	}
+	if (fread(id3header, 1, 5, f) != 5)
+	{
+		fclose(f);
+		return;
+	}
+	if (memcmp(id3header, "ID3", 3) != 0)
+	{
+		fclose(f);
+		return;
+	}
+	if ((uint8_t)id3header[3] == 2)
+	{
+		read_id3v22tag(f);
+	}
+	else if ((uint8_t)id3header[3] == 3)
+	{
+		read_id3v23tag(f);
+	}
+	else if ((uint8_t)id3header[3] == 4)
+	{
+		read_id3v24tag(f);
+	}
+	fclose(f);
+}
+
 void read_apetag(const char *fname)
 {
 	FILE *f;
@@ -1581,6 +2239,7 @@ int main(int argc, char **argv)
 
 	if (!urlmode) {
 		read_apetag(argv[optind]);
+		read_id3v2tag(argv[optind]);
 	}
 
 	AVDictionary *whole_file_metadata = avfctx->metadata;
