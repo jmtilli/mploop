@@ -262,8 +262,6 @@ def get_id3v2_4(fname):
         footerpresent = (((flags>>4)&1) == 1)
         if flags&15:
             return None, None
-        #if flags&128:
-        #    return None, None # XXX this fails with tags created by mp3gain
         if exthdr:
             exthdr1 = f.read(4)
             if len(exthdr1) != 4:
@@ -411,8 +409,6 @@ def get_id3v2_3(fname):
         experimental = (((flags>>5)&1) == 1)
         if flags&31:
             return None, None
-        if flags&128:
-            return None, None
         if exthdr:
             exthdr1 = maybe_unsync_read(f, unsync, 4)
             if len(exthdr1) != 4:
@@ -522,8 +518,6 @@ def get_id3v2_2(fname):
         if compression:
             return None, None
         if flags&63:
-            return None, None
-        if flags&128:
             return None, None
         gain = {}
         res = []
