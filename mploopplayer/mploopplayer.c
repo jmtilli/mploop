@@ -1326,9 +1326,9 @@ void read_id3v24tag(FILE *f)
 	uint8_t flags;
 	uint32_t size;
 	int unsync_all;
-	int experimental;
+	//int experimental;
 	int exthdr;
-	int footerpresent;
+	//int footerpresent;
 	if (fread(id3header5, 1, 5, f) != 5)
 	{
 		return;
@@ -1344,8 +1344,8 @@ void read_id3v24tag(FILE *f)
 	size = decode_syncsafe(&id3header5[1]);
 	unsync_all = (flags>>7)&1;
 	exthdr = (flags>>6)&1;
-	experimental = (flags>>5)&1;
-	footerpresent = (flags>>4)&1;
+	//experimental = (flags>>5)&1;
+	//footerpresent = (flags>>4)&1;
 	if (flags&15)
 	{
 		return;
@@ -1508,7 +1508,7 @@ void read_id3v23tag(FILE *f)
 	uint8_t flags;
 	uint32_t size;
 	int unsync;
-	int experimental;
+	//int experimental;
 	int exthdr;
 	if (fread(id3header5, 1, 5, f) != 5)
 	{
@@ -1525,7 +1525,7 @@ void read_id3v23tag(FILE *f)
 	size = decode_syncsafe(&id3header5[1]);
 	unsync = (flags>>7)&1;
 	exthdr = (flags>>6)&1;
-	experimental = (flags>>5)&1;
+	//experimental = (flags>>5)&1;
 	if (flags&31)
 	{
 		return;
@@ -1558,7 +1558,7 @@ void read_id3v23tag(FILE *f)
 		char framehdr[10];
 		char *frame;
 		uint32_t framesz;
-		uint16_t flags;
+		//uint16_t flags;
 		if (ftell(f) > size+10)
 		{
 			return;
@@ -1576,9 +1576,9 @@ void read_id3v23tag(FILE *f)
 			(((uint32_t)(uint8_t)framehdr[5]) << 16) |
 			(((uint32_t)(uint8_t)framehdr[6]) << 8) |
 			(((uint32_t)(uint8_t)framehdr[7]) << 0);
-		flags =
-			(((uint16_t)(uint8_t)framehdr[8]) << 8) |
-			(((uint16_t)(uint8_t)framehdr[9]) << 0);
+		//flags =
+		//	(((uint16_t)(uint8_t)framehdr[8]) << 8) |
+		//	(((uint16_t)(uint8_t)framehdr[9]) << 0);
 		frame = malloc(framesz+1);
 		if (!frame)
 		{
