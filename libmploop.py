@@ -530,6 +530,8 @@ def get_gain(ln):
             return (False, 0.0, [])
         return get_mp4_gain(ln)
     elif mimetype == "audio/mpeg":
+        if mploopplayer:
+            return (False, 0.0, [])
         #if mploopplayer:
         #    res = get_mp3_gain(ln)
         #    return (res[0], res[1], [])
