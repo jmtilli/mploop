@@ -1263,6 +1263,9 @@ size_t u16cmp(char *frame, size_t framesz, const char *key, size_t keysz)
 			{
 				return 0;
 			}
+		}
+		for (i = 0; i < (framesz-1-2*keysz)/2; i++)
+		{
 			frame[i] = frame[1+2*keysz+2*i+1];
 		}
 		return (framesz-1-2*keysz)/2;
@@ -1288,6 +1291,9 @@ size_t u16cmp(char *frame, size_t framesz, const char *key, size_t keysz)
 			{
 				return 0;
 			}
+		}
+		for (i = 0; i < (framesz-3-2*keysz)/2; i++)
+		{
 			frame[i] = frame[3+2*keysz+2*i+1];
 		}
 		return (framesz-3-2*keysz)/2;
@@ -1313,6 +1319,9 @@ size_t u16cmp(char *frame, size_t framesz, const char *key, size_t keysz)
 			{
 				return 0;
 			}
+		}
+		for (i = 0; i < (framesz-3-2*keysz)/2; i++)
+		{
 			frame[i] = frame[3+2*keysz+2*i+0];
 		}
 		return (framesz-3-2*keysz)/2;
