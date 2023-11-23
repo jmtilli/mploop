@@ -96,11 +96,7 @@ needed.
 However, for full support it is heavily recommended the following tools
 are installed:
 
-* `id3v2`
-* `id3tool`
-* `mp3gain`
 * `metaflac`
-* `vorbiscomment`
 * `opusinfo` or `opustags` or both
 * `AtomicParsley`
 

@@ -10,6 +10,7 @@ import subprocess
 import select
 import socket
 import libtag
+import libmploopogg
 try:
     from StringIO import StringIO
 except ImportError:
@@ -592,10 +593,11 @@ def get_gain(ln):
                 if e.errno != errno.ENOENT:
                     raise
             if out == [""]:
-                proc = subprocess.Popen(["vorbiscomment", "--", ln], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                out,err = proc.communicate()
-                proc.wait()
-                out = out.decode("utf-8").split("\n")
+                out = libmploopogg.vorbis_comment(ln)
+                #proc = subprocess.Popen(["vorbiscomment", "--", ln], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                #out,err = proc.communicate()
+                #proc.wait()
+                #out = out.decode("utf-8").split("\n")
         except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
