@@ -94,4 +94,42 @@ def vorbis_comment(fn):
                     comments.append(comment.decode("utf-8"))
                 return comments
     except:
-        return []
+        return None
+
+def opus_info(fn):
+    ssnblacklist = set([])
+    ssnwhitelist = set([])
+    comments = []
+    try:
+        with OggWith(fn) as ogg:
+            while True:
+                ssn,pkt = ogg.get_packet()
+                if len(pkt) == 0:
+                    break
+                if ssn in ssnblacklist:
+                    continue
+                if pkt[0:4] != b'Opus':
+                    ssnblacklist.add(ssn)
+                    continue
+                if pkt[4:8] == b'Head':
+                    if pkt[8:9] != b'\x01':
+                        ssnblacklist.add(ssn)
+                        continue
+                    ssnwhitelist.add(ssn)
+                    continue
+                if pkt[4:8] == b'Tags' and ssn in ssnwhitelist:
+                    pass # comment
+                else:
+                    ssnblacklist.add(ssn)
+                    continue
+                cf = io.BytesIO(pkt[8:])
+                vendor_len = struct.unpack("<I", cf.read(4))[0]
+                vendor_str = cf.read(vendor_len)
+                comment_list_len = struct.unpack("<I", cf.read(4))[0]
+                for n in range(comment_list_len):
+                    comment_len = struct.unpack("<I", cf.read(4))[0]
+                    comment = cf.read(comment_len)
+                    comments.append(comment.decode("utf-8"))
+                return comments
+    except:
+        return None

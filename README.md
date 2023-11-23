@@ -97,7 +97,6 @@ However, for full support it is heavily recommended the following tools
 are installed:
 
 * `metaflac`
-* `opusinfo` or `opustags` or both
 * `AtomicParsley`
 
 ## How to install

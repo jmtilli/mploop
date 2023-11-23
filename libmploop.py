@@ -577,31 +577,11 @@ def get_gain(ln):
     elif mimetype == "audio/ogg":
         if mploopplayer:
             return (False, 0.0, [])
-        try:
-            out = [""]
-            is_opus, out = get_opusinfo(ln)
-            try:
-                if is_opus == None:
-                    is_opus = False
-                    proc = subprocess.Popen(["opustags", "--", ln], stdout=subprocess.PIPE)
-                    out,err = proc.communicate()
-                    proc.wait()
-                    out = out.decode("utf-8").split("\n")
-                    if out != [""]:
-                        is_opus = True
-            except OSError as e:
-                if e.errno != errno.ENOENT:
-                    raise
-            if out == [""]:
-                out = libmploopogg.vorbis_comment(ln)
-                #proc = subprocess.Popen(["vorbiscomment", "--", ln], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                #out,err = proc.communicate()
-                #proc.wait()
-                #out = out.decode("utf-8").split("\n")
-        except OSError as e:
-            if e.errno != errno.ENOENT:
-                raise
-            return (True, 0.0, [])
+        out = libmploopogg.opus_info(ln)
+        if out is None:
+            out = libmploopogg.vorbis_comment(ln)
+            if not out:
+                out = []
         for out1 in out:
             if out1 == '':
                 continue
