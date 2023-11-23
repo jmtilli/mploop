@@ -11,6 +11,7 @@ import select
 import socket
 import libtag
 import libmploopogg
+import libmploopflac
 try:
     from StringIO import StringIO
 except ImportError:
@@ -411,53 +412,47 @@ def get_flac_gain(ln):
     if mimetype != "" and mimetype[-1] == "\n":
         mimetype = mimetype[:-1]
     if mimetype == "audio/flac":
-        try:
-            proc = subprocess.Popen(["metaflac", "--list", "--block-type=VORBIS_COMMENT", "--", ln], stdout=subprocess.PIPE)
-            out,err = proc.communicate()
-            proc.wait()
-            out = out.decode("utf-8").split("\n")
-        except OSError as e:
-            if e.errno != errno.ENOENT:
-                raise
-            return (True, 0.0, [])
+        out = libmploopflac.meta_flac(ln)
+        if out is None:
+            out = []
         for out1 in out:
-            if out1[:12] == "    comment[":
-                cval = re.sub("^    comment\\[[0-9]+\\]: ", "", out1)
-                if "=" not in cval:
-                    continue
-                k,v = cval.split("=", 1)
-                if k == "R128_TRACK_GAIN":
-                    try:
-                        r128trackgain_db = float(v)/256.0 + offset
-                    except:
-                        pass
-                elif k == "R128_ALBUM_GAIN":
-                    try:
-                        r128albumgain_db = float(v)/256.0 + offset
-                    except:
-                        pass
-                elif k == "REPLAYGAIN_REFERENCE_LOUDNESS":
-                    if v[-3:] == " dB":
-                        try:
-                            ref = float(v[:-3])
-                        except:
-                            pass
-                elif k == "REPLAYGAIN_ALBUM_GAIN":
-                    if v[-3:] == " dB":
-                        try:
-                            albumgain_db = float(v[:-3]) + offset
-                        except:
-                            pass
-                elif k == "REPLAYGAIN_TRACK_GAIN":
-                    if v[-3:] == " dB":
-                        try:
-                            trackgain_db = float(v[:-3]) + offset
-                        except:
-                            pass
-                elif k == 'REPLAYGAIN_ALBUM_PEAK' or k == 'REPLAYGAIN_TRACK_PEAK':
+            if out1 == '':
+                continue
+            if "=" not in out1:
+                continue
+            k,v = out1.split("=", 1)
+            if k == "R128_TRACK_GAIN":
+                try:
+                    r128trackgain_db = float(v)/256.0 + offset
+                except:
                     pass
-                else:
-                    comments.append((k,v))
+            elif k == "R128_ALBUM_GAIN":
+                try:
+                    r128albumgain_db = float(v)/256.0 + offset
+                except:
+                    pass
+            elif k == "REPLAYGAIN_REFERENCE_LOUDNESS":
+                if v[-3:] == " dB":
+                    try:
+                        ref = float(v[:-3])
+                    except:
+                        pass
+            elif k == "REPLAYGAIN_ALBUM_GAIN":
+                if v[-3:] == " dB":
+                    try:
+                        albumgain_db = float(v[:-3]) + offset
+                    except:
+                        pass
+            elif k == "REPLAYGAIN_TRACK_GAIN":
+                if v[-3:] == " dB":
+                    try:
+                        trackgain_db = float(v[:-3]) + offset
+                    except:
+                        pass
+            elif k == 'REPLAYGAIN_ALBUM_PEAK' or k == 'REPLAYGAIN_TRACK_PEAK':
+                pass
+            else:
+                comments.append((k,v))
     if r128albumgain_db != None:
         return (True, r128albumgain_db, comments)
     if r128trackgain_db != None:

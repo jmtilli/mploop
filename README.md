@@ -96,7 +96,6 @@ needed.
 However, for full support it is heavily recommended the following tools
 are installed:
 
-* `metaflac`
 * `AtomicParsley`
 
 ## How to install
