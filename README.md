@@ -93,11 +93,6 @@ mploopplayer. You decide whether mploopplayer is used simply by compiling it;
 if the executable binary is detected, it is used. Also the `file` utility is
 needed.
 
-However, for full support it is heavily recommended the following tools
-are installed:
-
-* `AtomicParsley`
-
 ## How to install
 
 The installation is done by executing the script install.sh

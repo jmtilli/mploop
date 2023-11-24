@@ -12,6 +12,7 @@ import socket
 import libtag
 import libmploopogg
 import libmploopflac
+import libmploopmp4
 try:
     from StringIO import StringIO
 except ImportError:
@@ -153,64 +154,42 @@ def get_mp4_gain(ln):
     out,err = proc.communicate()
     proc.wait()
     mimetype = out.decode("us-ascii")
+    magic_ref = 89.0
+    ref = 89.0
+    r128trackgain_db = None
+    r128albumgain_db = None
     trackgain_db = 0.0
     albumgain_db = None
     comments = []
     if mimetype != "" and mimetype[-1] == "\n":
         mimetype = mimetype[:-1]
     if mimetype == "video/mp4" or mimetype == "audio/mp4":
-        try:
-            ln2 = ln
-            if ln2 and ln2[0] == '-':
-                ln2 = './' + ln2
-            newlinecnt = ln2.count('\n')
-            proc = subprocess.Popen(["AtomicParsley", ln2, "-t"], stdout=subprocess.PIPE)
-            out,err = proc.communicate()
-            proc.wait()
-            out = out.decode("utf-8").split("\n")
-            for line in out:
-                rem = re.match("^Atom \"\u00a9ART\" contains: (.*)$", line)
-                if rem:
-                    comments.append(("ARTIST", rem.group(1)))
-                rem = re.match("^Atom \"\u00a9alb\" contains: (.*)$", line)
-                if rem:
-                    comments.append(("ALBUM", rem.group(1)))
-                rem = re.match("^Atom \"\u00a9nam\" contains: (.*)$", line)
-                if rem:
-                    comments.append(("TITLE", rem.group(1)))
-                rem = re.match("^Atom \"\u00a9gen\" contains: (.*)$", line)
-                if rem:
-                    comments.append(("GENRE", rem.group(1)))
-                rem = re.match("^Atom \"trkn\" contains: (.*)$", line)
-                if rem:
-                    comments.append(("TRACKNUMBER", rem.group(1)))
-                rem = re.match("^Atom \"disk\" contains: (.*)$", line)
-                if rem:
-                    comments.append(("DISCNUMBER", rem.group(1)))
-                rem = re.match("^Atom \"\u00a9day\" contains: (.*)$", line)
-                if rem:
-                    comments.append(("YEAR", rem.group(1)))
-                rem = re.match("^Atom \"\u00a9enc\" contains: (.*)$", line)
-                if rem:
-                    comments.append(("ENCODED-BY", rem.group(1)))
-                rem = re.match("^Atom \"----\" \\[com.apple.iTunes;replaygain_track_gain\\] contains: (.*)$", line)
-                if rem:
+        out = libmploopmp4.mp4_tags(ln)
+        if out is None:
+            out = []
+        for out1 in out:
+            if out1 == '':
+                continue
+            if "=" not in out1:
+                continue
+            k,v = out1.split("=", 1)
+            if k == "REPLAYGAIN_ALBUM_GAIN":
+                if v[-3:] == " dB":
                     try:
-                        trackgain_db = float(rem.group(1)) + offset
+                        albumgain_db = float(v[:-3]) + offset
                     except:
                         pass
-                rem = re.match("^Atom \"----\" \\[com.apple.iTunes;replaygain_album_gain\\] contains: (.*)$", line)
-                if rem:
+            elif k == "REPLAYGAIN_TRACK_GAIN":
+                if v[-3:] == " dB":
                     try:
-                        albumgain_db = float(rem.group(1)) + offset
+                        trackgain_db = float(v[:-3]) + offset
                     except:
                         pass
-        except OSError as e:
-            if e.errno != errno.ENOENT:
-                raise
+            else:
+                comments.append((k,v))
     if albumgain_db != None:
-        return (True, albumgain_db, comments)
-    return (True, trackgain_db, comments)
+        return (True, albumgain_db + (magic_ref - ref), comments)
+    return (True, trackgain_db + (magic_ref - ref), comments)
 
 def get_mp3_gain(ln):
     proc=subprocess.Popen(["file", "-b", "--mime-type", "--", ln], stdout=subprocess.PIPE)
