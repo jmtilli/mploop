@@ -150,10 +150,7 @@ class DbLock(object):
         os.close(self.mainlck)
 
 def get_mp4_gain(ln):
-    proc=subprocess.Popen(["file", "-b", "--mime-type", "--", ln], stdout=subprocess.PIPE)
-    out,err = proc.communicate()
-    proc.wait()
-    mimetype = out.decode("us-ascii")
+    mimetype = 'audio/mp4'
     magic_ref = 89.0
     ref = 89.0
     r128trackgain_db = None
@@ -161,8 +158,6 @@ def get_mp4_gain(ln):
     trackgain_db = 0.0
     albumgain_db = None
     comments = []
-    if mimetype != "" and mimetype[-1] == "\n":
-        mimetype = mimetype[:-1]
     if mimetype == "video/mp4" or mimetype == "audio/mp4":
         out = libmploopmp4.mp4_tags(ln)
         if out is None:
@@ -377,10 +372,7 @@ def get_mp3_gain(ln):
     return (has_some_gain, trackgain_db, comments)
 
 def get_flac_gain(ln):
-    proc=subprocess.Popen(["file", "-b", "--mime-type", "--", ln], stdout=subprocess.PIPE)
-    out,err = proc.communicate()
-    proc.wait()
-    mimetype = out.decode("us-ascii")
+    mimetype = 'audio/flac'
     magic_ref = 89.0
     ref = 89.0
     r128trackgain_db = None
@@ -388,8 +380,6 @@ def get_flac_gain(ln):
     trackgain_db = 0.0
     albumgain_db = None
     comments = []
-    if mimetype != "" and mimetype[-1] == "\n":
-        mimetype = mimetype[:-1]
     if mimetype == "audio/flac":
         out = libmploopflac.meta_flac(ln)
         if out is None:
@@ -482,10 +472,8 @@ def touch():
         pass
 
 def get_gain(ln):
-    proc=subprocess.Popen(["file", "-b", "--mime-type", "--", ln], stdout=subprocess.PIPE)
-    out,err = proc.communicate()
-    proc.wait()
-    mimetype = out.decode("us-ascii")
+    if mploopplayer:
+        return (False, 0.0, [])
     r128trackgain_db = None
     r128albumgain_db = None
     magic_ref = 89.0
@@ -494,8 +482,24 @@ def get_gain(ln):
     albumgain_db = None
     comments = []
     is_opus = False
-    if mimetype != "" and mimetype[-1] == "\n":
-        mimetype = mimetype[:-1]
+    mimetype = None
+    if libmploopogg.opus_info(ln) is not None:
+        mimetype='audio/ogg'
+    if libmploopogg.vorbis_comment(ln) is not None:
+        mimetype='audio/ogg'
+    if libmploopmp4.mp4_tags(ln) is not None:
+        mimetype='audio/mp4'
+    if libmploopflac.meta_flac(ln) is not None:
+        mimetype='audio/flac'
+    gain,res = libtag.get_ape(ln)
+    if mimetype is None and (gain is not None or res is not None):
+        mimetype='audio/mpeg'
+    gain,res = libtag.get_id3v2(ln)
+    if mimetype is None and (gain is not None or res is not None):
+        mimetype='audio/mpeg'
+    gain,res = libtag.get_id3v1(ln)
+    if mimetype is None and (gain is not None or res is not None):
+        mimetype='audio/mpeg'
     if mimetype == "audio/flac":
         if mploopplayer:
             return (False, 0.0, [])

@@ -90,8 +90,7 @@ shell just for playing music would be a major crime.
 
 MPloop requires either MPlayer or the custom included music player,
 mploopplayer. You decide whether mploopplayer is used simply by compiling it;
-if the executable binary is detected, it is used. Also the `file` utility is
-needed.
+if the executable binary is detected, it is used.
 
 ## How to install
 
