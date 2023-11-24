@@ -8,16 +8,16 @@ class OggWith(object):
         self.f = open(fn, "rb")
         hdr = self.f.read(28)
         if len(hdr) != 28:
-            return
+            raise Exception("not ogg")
         if hdr[0:4] != b'OggS':
-            return
+            raise Exception("not ogg")
         if hdr[4:5] != b'\x00':
-            return
+            raise Exception("not correct ogg version")
         flags = struct.unpack("B", hdr[5:6])[0]
         if (flags >> 0)&1:
-            return
+            raise Exception("continuation")
         if not ((flags >> 1)&1):
-            return
+            raise Exception("not first")
         self.ssn = hdr[14:18]
         psn = hdr[18:22]
         checksum = hdr[22:26]
@@ -31,16 +31,16 @@ class OggWith(object):
     def get_page(self):
         hdr = self.f.read(28)
         if len(hdr) != 28:
-            return
+            raise Exception("not ogg")
         if hdr[0:4] != b'OggS':
-            return
+            raise Exception("not ogg")
         if hdr[4:5] != b'\x00':
-            return
+            raise Exception("not correct ogg version")
         flags = struct.unpack("B", hdr[5:6])[0]
         if (flags >> 0)&1:
-            return
+            raise Exception("continuation")
         if ((flags >> 1)&1):
-            return
+            raise Exception("first")
         self.ssn = hdr[14:18]
         psn = hdr[18:22]
         checksum = hdr[22:26]
