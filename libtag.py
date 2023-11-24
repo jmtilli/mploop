@@ -196,6 +196,21 @@ def unsync_read_opt(f, sz):
         last_ff_old = last_ff
     return res
 
+def unsync_read_opt_aftersz(f, sz):
+    res = b""
+    last_ff = False
+    last_ff_old = False
+    tmpblock = f.read(sz)
+    if tmpblock == b"":
+        return res
+    last_ff = (tmpblock[-1:] == b"\xff")
+    tmpblock = tmpblock.replace(b"\xff\x00", b"\xff")
+    if tmpblock[0:1] == b"\x00" and last_ff_old:
+        tmpblock = tmpblock[1:]
+    res += tmpblock
+    last_ff_old = last_ff
+    return res
+
 def unsync_read(f, sz):
     res = b""
     unsync = False
@@ -214,6 +229,12 @@ def unsync_read(f, sz):
 def maybe_unsync_read(f, unsync, sz):
     if unsync:
         return unsync_read_opt(f, sz)
+    else:
+        return f.read(sz)
+
+def maybe_unsync_read_aftersz(f, unsync, sz):
+    if unsync:
+        return unsync_read_opt_aftersz(f, sz)
     else:
         return f.read(sz)
 
@@ -297,8 +318,8 @@ def get_id3v2_4(fname):
                 if len(dlen) != 4:
                     return gain, res
                 framesz -= 4
-            framecontents = maybe_unsync_read(f, unsync_all or frame_unsync, framesz)
-            if len(framecontents) != framesz:
+            framecontents = maybe_unsync_read_aftersz(f, unsync_all or frame_unsync, framesz)
+            if len(framecontents) > framesz:
                 return gain, res
             if f.tell() > size+10:
                 return gain, res
@@ -630,6 +651,7 @@ def get_ape(fname):
         file_len = f.tell()
         f.seek(-32, 2)
         apefooter = f.read(32)
+        has_id3 = False
         if len(apefooter) != 32:
             return None, None
         if apefooter[0:8] != b"APETAGEX":
