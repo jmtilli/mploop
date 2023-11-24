@@ -3,6 +3,15 @@ from __future__ import division
 import struct
 import io
 
+def f_skip(f, siz):
+    while siz >= 16384:
+        if len(f.read(16384)) != 16384:
+            return False
+        siz -= 16384
+    if len(f.read(siz)) != siz:
+        return False
+    return True
+
 def mp4_tags(fn):
     comments = []
     try:
@@ -28,14 +37,21 @@ def mp4_tags(fn):
                 moovsiz = struct.unpack(">I", moovsizbuf)[0]
                 moovtkn = f.read(4)
                 if moovsiz == 1:
-                    return None
+                    moovsizbuf = f.read(8)
+                    moovsiz = struct.unpack(">Q", moovsizbuf)-8
+                    if moovsiz < 8:
+                        return None
                 elif moovsiz < 8:
+                    return None
+                if moovtkn != b"moov":
+                    if not f_skip(f, moovsiz-8):
+                        return None
+                    continue
+                if moovsiz > 32*1024*1024: # arbitrary limit
                     return None
                 moovbuf = f.read(moovsiz-8)
                 if len(moovbuf) != moovsiz-8:
                     return None
-                if moovtkn != b"moov":
-                    continue
                 fmoov = io.BytesIO(moovbuf)
                 while True:
                     udtasizbuf = fmoov.read(4)
