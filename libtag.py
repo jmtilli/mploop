@@ -615,188 +615,197 @@ def get_id3v2_2(fname):
                 res.append((key, val))
 
 def get_id3v2(fname):
-    with open(fname, "rb") as f:
-        id3header = f.read(10)
-        if len(id3header) != 10:
-            return None, None
-        if id3header[0:3] != b"ID3":
-            return None, None
-        version = struct.unpack("B", id3header[3:4])[0]
-        if version == 0xFF:
-            return None, None
-        revision = struct.unpack("B", id3header[4:5])[0]
-        if revision == 0xFF:
-            return None, None
-        flags = struct.unpack("B", id3header[5:6])[0]
-        sizebytes = struct.unpack("BBBB", id3header[6:10])
-        if sizebytes[0]>>7:
-            return None, None
-        if sizebytes[1]>>7:
-            return None, None
-        if sizebytes[2]>>7:
-            return None, None
-        if sizebytes[3]>>7:
-            return None, None
-        size = (sizebytes[0]<<21)|(sizebytes[1]<<14)|(sizebytes[2]<<7)|(sizebytes[3])
-        if version == 4:
-            return get_id3v2_4(fname)
-        if version == 3:
-            return get_id3v2_3(fname)
-        if version == 2:
-            return get_id3v2_2(fname)
+    try:
+        with open(fname, "rb") as f:
+            id3header = f.read(10)
+            if len(id3header) != 10:
+                return None, None
+            if id3header[0:3] != b"ID3":
+                return None, None
+            version = struct.unpack("B", id3header[3:4])[0]
+            if version == 0xFF:
+                return None, None
+            revision = struct.unpack("B", id3header[4:5])[0]
+            if revision == 0xFF:
+                return None, None
+            flags = struct.unpack("B", id3header[5:6])[0]
+            sizebytes = struct.unpack("BBBB", id3header[6:10])
+            if sizebytes[0]>>7:
+                return None, None
+            if sizebytes[1]>>7:
+                return None, None
+            if sizebytes[2]>>7:
+                return None, None
+            if sizebytes[3]>>7:
+                return None, None
+            size = (sizebytes[0]<<21)|(sizebytes[1]<<14)|(sizebytes[2]<<7)|(sizebytes[3])
+            if version == 4:
+                return get_id3v2_4(fname)
+            if version == 3:
+                return get_id3v2_3(fname)
+            if version == 2:
+                return get_id3v2_2(fname)
+    except:
+        return None, None
 
 def get_ape(fname):
-    with open(fname, "rb") as f:
-        f.seek(0, 2)
-        file_len = f.tell()
-        f.seek(-32, 2)
-        apefooter = f.read(32)
-        has_id3 = False
-        if len(apefooter) != 32:
-            return None, None
-        if apefooter[0:8] != b"APETAGEX":
-            f.seek(-128, 2)
-            id3v1tag = f.read(128)
-            if len(id3v1tag) == 128:
-                has_id3 = (id3v1tag[0:3] == b'TAG')
-                if has_id3:
-                    f.seek(-128-32, 2)
-                    apefooter = f.read(32)
-        if len(apefooter) != 32:
-            return None, None
-        if apefooter[0:8] != b"APETAGEX":
-            return None, None
-        apeversion = apefooter[8:12]
-        if struct.unpack("<I", apeversion)[0] != 2000:
-            return None, None
-        apelen = struct.unpack("<I", apefooter[12:16])[0]
-        apeitems = struct.unpack("<I", apefooter[16:20])[0]
-        apeflags = struct.unpack("<I", apefooter[20:24])[0]
-        apereserved = apefooter[24:32]
-        if file_len < apelen:
-            return None, None
-        if file_len >= (apelen + (has_id3 and (128+32) or 32)):
-            f.seek(-apelen-(has_id3 and (128+32) or 32), 2)
-            apeheader = f.read(32)
-            if len(apeheader) != 32:
+    try:
+        with open(fname, "rb") as f:
+            f.seek(0, 2)
+            file_len = f.tell()
+            f.seek(-32, 2)
+            apefooter = f.read(32)
+            has_id3 = False
+            if len(apefooter) != 32:
                 return None, None
-            if apeheader[0:8] != b"APETAGEX":
+            if apefooter[0:8] != b"APETAGEX":
+                f.seek(-128, 2)
+                id3v1tag = f.read(128)
+                if len(id3v1tag) == 128:
+                    has_id3 = (id3v1tag[0:3] == b'TAG')
+                    if has_id3:
+                        f.seek(-128-32, 2)
+                        apefooter = f.read(32)
+            if len(apefooter) != 32:
                 return None, None
-            apeversion2 = apeheader[8:12]
-            if struct.unpack("<I", apeversion2)[0] != 2000:
+            if apefooter[0:8] != b"APETAGEX":
                 return None, None
-            apelen2 = struct.unpack("<I", apeheader[12:16])[0]
-            apeitems2 = struct.unpack("<I", apeheader[16:20])[0]
-            apeflags2 = struct.unpack("<I", apeheader[20:24])[0]
-            apereserved2 = apeheader[24:32]
-            if apelen2 != apelen or apeitems2 != apeitems:
+            apeversion = apefooter[8:12]
+            if struct.unpack("<I", apeversion)[0] != 2000:
                 return None, None
-            gain = {}
-            res = []
-            for itemid in range(apeitems2):
-                tagheader = f.read(8)
-                if len(tagheader) != 8:
+            apelen = struct.unpack("<I", apefooter[12:16])[0]
+            apeitems = struct.unpack("<I", apefooter[16:20])[0]
+            apeflags = struct.unpack("<I", apefooter[20:24])[0]
+            apereserved = apefooter[24:32]
+            if file_len < apelen:
+                return None, None
+            if file_len >= (apelen + (has_id3 and (128+32) or 32)):
+                f.seek(-apelen-(has_id3 and (128+32) or 32), 2)
+                apeheader = f.read(32)
+                if len(apeheader) != 32:
                     return None, None
-                taglen = struct.unpack("<I", tagheader[0:4])[0]
-                tagflags = struct.unpack("<I", tagheader[4:8])[0]
-                key = b''
-                while True:
-                    byte = f.read(1)
-                    if len(byte) != 1:
-                        break
-                    if byte != b'\x00':
-                        key += byte
-                    else:
-                        break
-                if str != bytes:
-                    try:
-                        key = key.decode("us-ascii")
-                    except:
+                if apeheader[0:8] != b"APETAGEX":
+                    return None, None
+                apeversion2 = apeheader[8:12]
+                if struct.unpack("<I", apeversion2)[0] != 2000:
+                    return None, None
+                apelen2 = struct.unpack("<I", apeheader[12:16])[0]
+                apeitems2 = struct.unpack("<I", apeheader[16:20])[0]
+                apeflags2 = struct.unpack("<I", apeheader[20:24])[0]
+                apereserved2 = apeheader[24:32]
+                if apelen2 != apelen or apeitems2 != apeitems:
+                    return None, None
+                gain = {}
+                res = []
+                for itemid in range(apeitems2):
+                    tagheader = f.read(8)
+                    if len(tagheader) != 8:
                         return None, None
-                val = f.read(taglen)
-                if len(val) != taglen:
-                    return None, None
-                if (tagflags&0x6) == 0:
-                    if key == 'REPLAYGAIN_REFERENCE_LOUDNESS':
+                    taglen = struct.unpack("<I", tagheader[0:4])[0]
+                    tagflags = struct.unpack("<I", tagheader[4:8])[0]
+                    key = b''
+                    while True:
+                        byte = f.read(1)
+                        if len(byte) != 1:
+                            break
+                        if byte != b'\x00':
+                            key += byte
+                        else:
+                            break
+                    if str != bytes:
                         try:
-                            gain["REF"] = float(re.sub(" dB$", "", val.decode("utf-8")))
+                            key = key.decode("us-ascii")
                         except:
-                            pass
-                    elif key == 'REPLAYGAIN_TRACK_GAIN':
-                        try:
-                            gain["TRACK"] = float(re.sub(" dB$", "", val.decode("utf-8")))
-                        except:
-                            pass
-                    elif key == 'REPLAYGAIN_ALBUM_GAIN':
-                        try:
-                            gain["ALBUM"] = float(re.sub(" dB$", "", val.decode("utf-8")))
-                        except:
-                            pass
-                    else:
-                        res.append((key, val.decode("utf-8")))
-            return gain, res
+                            return None, None
+                    val = f.read(taglen)
+                    if len(val) != taglen:
+                        return None, None
+                    if (tagflags&0x6) == 0:
+                        if key == 'REPLAYGAIN_REFERENCE_LOUDNESS':
+                            try:
+                                gain["REF"] = float(re.sub(" dB$", "", val.decode("utf-8")))
+                            except:
+                                pass
+                        elif key == 'REPLAYGAIN_TRACK_GAIN':
+                            try:
+                                gain["TRACK"] = float(re.sub(" dB$", "", val.decode("utf-8")))
+                            except:
+                                pass
+                        elif key == 'REPLAYGAIN_ALBUM_GAIN':
+                            try:
+                                gain["ALBUM"] = float(re.sub(" dB$", "", val.decode("utf-8")))
+                            except:
+                                pass
+                        else:
+                            res.append((key, val.decode("utf-8")))
+                return gain, res
+    except:
+        return None, None
 
 def get_id3v1(fname):
-    with open(fname, "rb") as f:
-        f.seek(-128, 2)
-        gain = {}
-        res = []
-        id3v1tag = f.read(128)
-        if len(id3v1tag) != 128:
-            return None, None
-        if id3v1tag[0:3] == b'TAG':
-            title = id3v1tag[3:33]
-            while title and title[-1:] == b'\x00':
-                title = title[:-1]
-            try:
-                title = title.decode("utf-8")
-            except:
-                title = title.decode("iso-8859-1")
-            artist = id3v1tag[33:63]
-            while artist and artist[-1:] == b'\x00':
-                artist = artist[:-1]
-            try:
-                artist = artist.decode("utf-8")
-            except:
-                artist = artist.decode("iso-8859-1")
-            album = id3v1tag[63:93]
-            while album and album[-1:] == b'\x00':
-                album = album[:-1]
-            try:
-                album = album.decode("utf-8")
-            except:
-                album = album.decode("iso-8859-1")
-            year = id3v1tag[93:97]
-            while year and year[-1:] == b'\x00':
-                year = year[:-1]
-            year = year.decode("iso-8859-1")
-            comment = id3v1tag[97:125]
-            while comment and comment[-1:] == b'\x00':
-                comment = comment[:-1]
-            try:
-                comment = comment.decode("utf-8")
-            except:
-                comment = comment.decode("iso-8859-1")
-            tracknumber = struct.unpack(">H", id3v1tag[125:127])[0]
-            genre = struct.unpack("B", id3v1tag[127:128])[0]
+    try:
+        with open(fname, "rb") as f:
+            f.seek(-128, 2)
+            gain = {}
             res = []
-            res.append(("TITLE", title))
-            res.append(("ARTIST", artist))
-            res.append(("ALBUM", album))
-            res.append(("YEAR", year))
-            if comment:
-                res.append(("COMMENT", comment))
-            try:
-                res.append(("TRACKNUMBER", unicode(tracknumber)))
-            except NameError:
-                res.append(("TRACKNUMBER", str(tracknumber)))
-            try:
-                res.append(("GENRE", ID3_GENRE_LIST[genre]))
-            except KeyError:
-                pass
-            return gain, res
-        else:
-            return None, None
+            id3v1tag = f.read(128)
+            if len(id3v1tag) != 128:
+                return None, None
+            if id3v1tag[0:3] == b'TAG':
+                title = id3v1tag[3:33]
+                while title and title[-1:] == b'\x00':
+                    title = title[:-1]
+                try:
+                    title = title.decode("utf-8")
+                except:
+                    title = title.decode("iso-8859-1")
+                artist = id3v1tag[33:63]
+                while artist and artist[-1:] == b'\x00':
+                    artist = artist[:-1]
+                try:
+                    artist = artist.decode("utf-8")
+                except:
+                    artist = artist.decode("iso-8859-1")
+                album = id3v1tag[63:93]
+                while album and album[-1:] == b'\x00':
+                    album = album[:-1]
+                try:
+                    album = album.decode("utf-8")
+                except:
+                    album = album.decode("iso-8859-1")
+                year = id3v1tag[93:97]
+                while year and year[-1:] == b'\x00':
+                    year = year[:-1]
+                year = year.decode("iso-8859-1")
+                comment = id3v1tag[97:125]
+                while comment and comment[-1:] == b'\x00':
+                    comment = comment[:-1]
+                try:
+                    comment = comment.decode("utf-8")
+                except:
+                    comment = comment.decode("iso-8859-1")
+                tracknumber = struct.unpack(">H", id3v1tag[125:127])[0]
+                genre = struct.unpack("B", id3v1tag[127:128])[0]
+                res = []
+                res.append(("TITLE", title))
+                res.append(("ARTIST", artist))
+                res.append(("ALBUM", album))
+                res.append(("YEAR", year))
+                if comment:
+                    res.append(("COMMENT", comment))
+                try:
+                    res.append(("TRACKNUMBER", unicode(tracknumber)))
+                except NameError:
+                    res.append(("TRACKNUMBER", str(tracknumber)))
+                try:
+                    res.append(("GENRE", ID3_GENRE_LIST[genre]))
+                except KeyError:
+                    pass
+                return gain, res
+            else:
+                return None, None
+    except:
+        return None, None
 
 if __name__ == '__main__':
     test()
