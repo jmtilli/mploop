@@ -1195,6 +1195,44 @@ int fskip(FILE *f, size_t sz)
 	return 1;
 }
 
+int maybe_unsync_read_aftersz(FILE *f, int unsync, void *buf, size_t sz, uint32_t *szout)
+{
+	char *cbufstart = buf;
+	char *cbuf = buf;
+	int cur_unsync = 0;
+	size_t bytes_read = 0;
+	if (!unsync)
+	{
+		return fread(buf, 1, sz, f) == sz;
+	}
+	else
+	{
+		while (bytes_read < sz)
+		{
+			int ch;
+			ch = getc(f);
+			if (ch == EOF)
+			{
+				return 0;
+			}
+			bytes_read++;
+			if (!cur_unsync &&
+			    cbuf - cbufstart > 0 && *(cbuf-1) == '\xff' &&
+			    ch == '\x00')
+			{
+				cur_unsync = 1;
+			}
+			else
+			{
+				*cbuf++ = (uint8_t)ch;
+				cur_unsync = 0;
+			}
+		}
+		*szout = (cbuf - cbufstart);
+		return 1;
+	}
+}
+
 int maybe_unsync_read(FILE *f, int unsync, void *buf, size_t sz)
 {
 	char *cbufstart = buf;
@@ -1421,7 +1459,7 @@ void read_id3v24tag(FILE *f)
 			handler_impl();
 			exit(1);
 		}
-		if (!maybe_unsync_read(f, unsync_all || frame_unsync, frame, framesz))
+		if (!maybe_unsync_read_aftersz(f, unsync_all || frame_unsync, frame, framesz, &framesz))
 		{
 			free(frame);
 			return;
