@@ -49,15 +49,19 @@ def process_meta(meta, f, comments):
     while True:
         if vflags != b"\x00\x00\x00\x00" and vflags is not None:
             ilstsizbuf = vflags
+            ilsttkn = meta.read(4)
+            if ilsttkn != b"ilst" and ilsttkn != b"hdlr" and ilsttkn != b"free":
+                ilstsizbuf = ilsttkn
+                ilsttkn = meta.read(4)
         else:
             ilstsizbuf = meta.read(4)
+            ilsttkn = meta.read(4)
         vflags = None
         if len(ilstsizbuf) == 0:
             break
         if len(ilstsizbuf) != 4:
             return None
         ilstsiz = struct.unpack(">I", ilstsizbuf)[0]
-        ilsttkn = meta.read(4)
         if ilstsiz == 1:
             ilstsizbuf = meta.read(8)
             ilstsiz = struct.unpack(">Q", ilstsizbuf)-8
