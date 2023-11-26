@@ -50,7 +50,15 @@ def process_meta(meta, f, comments):
         if vflags != b"\x00\x00\x00\x00" and vflags is not None:
             ilstsizbuf = vflags
             ilsttkn = meta.read(4)
-            if ilsttkn != b"ilst" and ilsttkn != b"hdlr" and ilsttkn != b"free":
+            proposed_siz1 = struct.unpack(">I", vflags)[0]
+            proposed_siz2 = struct.unpack(">I", ilsttkn)[0]
+            if proposed_siz1 < 8 and proposed_siz2-8 <= meta.remaining():
+                if ilsttkn != b"ilst" and ilsttkn != b"hdlr" and ilsttkn != b"free":
+                    second_way = True
+            if proposed_siz1-8 > meta.remaining() and proposed_siz2-8 <= meta.remaining():
+                if ilsttkn != b"ilst" and ilsttkn != b"hdlr" and ilsttkn != b"free":
+                    second_way = True
+            if second_way:
                 ilstsizbuf = ilsttkn
                 ilsttkn = meta.read(4)
         else:
