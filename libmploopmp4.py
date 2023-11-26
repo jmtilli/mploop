@@ -199,6 +199,7 @@ def mp4_tags(fn):
                     if udtatkn == b"meta":
                         if process_meta(udta, f, comments) is None:
                             return None
+                        continue
                     if udtatkn != b"udta":
                         udta.skip_all()
                         continue
