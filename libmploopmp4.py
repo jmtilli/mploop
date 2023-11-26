@@ -1,7 +1,6 @@
 from __future__ import print_function
 from __future__ import division
 import struct
-import io
 
 def f_skip(f, siz):
     while siz >= 16384:
@@ -11,6 +10,38 @@ def f_skip(f, siz):
     if len(f.read(siz)) != siz:
         return False
     return True
+
+class Atom(object):
+    def __init__(self, parent, f, siz):
+        self.parent = parent
+        self.siz = siz
+        self.f = f
+    def remaining(self):
+        if self.parent:
+            return min(self.parent.remaining(), self.siz)
+        else:
+            return self.siz
+    def consume(self, siz):
+        assert siz <= self.remaining()
+        self.siz -= siz
+        if self.parent:
+            self.parent.consume(siz)
+    def read(self, siz):
+        if siz > self.remaining():
+            siz = self.remaining()
+        self.consume(siz)
+        if siz == 0:
+            return b''
+        return self.f.read(siz)
+    def skip_all(self):
+        res = f_skip(self.f, self.remaining())
+        self.consume(self.remaining())
+        return res
+    def skip(self, siz):
+        if siz > self.remaining():
+            siz = self.remaining()
+        self.consume(siz)
+        return f_skip(self.f, siz)
 
 def mp4_tags(fn):
     comments = []
@@ -27,8 +58,7 @@ def mp4_tags(fn):
                 return None
             if ftyptkn != b"ftyp":
                 return None
-            ftypbuf = f.read(ftypsiz-8)
-            if len(ftypbuf) != ftypsiz-8:
+            if not f_skip(f, ftypsiz-8):
                 return None
             while True:
                 moovsizbuf = f.read(4)
@@ -49,97 +79,98 @@ def mp4_tags(fn):
                     continue
                 if moovsiz > 32*1024*1024: # arbitrary limit
                     return None
-                moovbuf = f.read(moovsiz-8)
-                if len(moovbuf) != moovsiz-8:
-                    return None
-                fmoov = io.BytesIO(moovbuf)
+                moov = Atom(None, f, moovsiz-8)
                 while True:
-                    udtasizbuf = fmoov.read(4)
+                    udtasizbuf = moov.read(4)
                     if len(udtasizbuf) == 0:
                         break
                     if len(udtasizbuf) != 4:
                         return None
                     udtasiz = struct.unpack(">I", udtasizbuf)[0]
-                    udtatkn = fmoov.read(4)
+                    udtatkn = moov.read(4)
                     if udtasiz == 1:
-                        return None
+                        udtasizbuf = moov.read(8)
+                        udtasiz = struct.unpack(">Q", udtasizbuf)-8
+                        if udtasiz < 8:
+                            return None
                     elif udtasiz < 8:
                         return None
-                    udtabuf = fmoov.read(udtasiz-8)
-                    if len(udtabuf) != udtasiz-8:
-                        return None
+                    udta = Atom(moov, f, udtasiz-8)
                     if udtatkn != b"udta":
+                        udta.skip_all()
                         continue
-                    fudta = io.BytesIO(udtabuf)
                     while True:
-                        metasizbuf = fudta.read(4)
+                        metasizbuf = udta.read(4)
                         if len(metasizbuf) == 0:
                             break
                         if len(metasizbuf) != 4:
                             return None
                         metasiz = struct.unpack(">I", metasizbuf)[0]
-                        metatkn = fudta.read(4)
+                        metatkn = udta.read(4)
                         if metasiz == 1:
-                            return None
+                            metasizbuf = udta.read(8)
+                            metasiz = struct.unpack(">Q", metasizbuf)-8
+                            if metasiz < 8:
+                                return None
                         elif metasiz < 8:
                             return None
-                        metabuf = fudta.read(metasiz-8)
-                        if len(metabuf) != metasiz-8:
-                            return None
+                        meta = Atom(udta, f, metasiz-8)
                         if metatkn != b"meta":
+                            meta.skip_all()
                             continue
-                        fmeta = io.BytesIO(metabuf[4:])
+                        meta.skip(4) # don't know why needed
                         while True:
-                            ilstsizbuf = fmeta.read(4)
+                            ilstsizbuf = meta.read(4)
                             if len(ilstsizbuf) == 0:
                                 break
                             if len(ilstsizbuf) != 4:
                                 return None
                             ilstsiz = struct.unpack(">I", ilstsizbuf)[0]
-                            ilsttkn = fmeta.read(4)
+                            ilsttkn = meta.read(4)
                             if ilstsiz == 1:
-                                return None
+                                ilstsizbuf = meta.read(8)
+                                ilstsiz = struct.unpack(">Q", ilstsizbuf)-8
+                                if ilstsiz < 8:
+                                    return None
                             elif ilstsiz < 8:
                                 return None
-                            ilstbuf = fmeta.read(ilstsiz-8)
-                            if len(ilstbuf) != ilstsiz-8:
-                                return None
+                            ilst = Atom(meta, f, ilstsiz-8)
                             if ilsttkn != b"ilst":
+                                ilst.skip_all()
                                 continue
-                            filst = io.BytesIO(ilstbuf)
                             while True:
-                                tagsizbuf = filst.read(4)
+                                tagsizbuf = ilst.read(4)
                                 if len(tagsizbuf) == 0:
                                     break
                                 if len(tagsizbuf) != 4:
                                     return None
                                 tagsiz = struct.unpack(">I", tagsizbuf)[0]
-                                tagtkn = filst.read(4)
+                                tagtkn = ilst.read(4)
                                 if tagsiz == 1:
-                                    return None
+                                    tagsizbuf = ilst.read(8)
+                                    tagsiz = struct.unpack(">Q", tagsizbuf)-8
+                                    if tagsiz < 8:
+                                        return None
                                 elif tagsiz < 8:
                                     return None
-                                tagbuf = filst.read(tagsiz-8)
-                                if len(tagbuf) != tagsiz-8:
-                                    return None
-                                ftag = io.BytesIO(tagbuf)
+                                tag = Atom(ilst, f, tagsiz-8)
                                 rawdata = None
                                 data = None
                                 mean = None
                                 name = None
                                 while True:
-                                    kvsizbuf = ftag.read(4)
+                                    kvsizbuf = tag.read(4)
                                     if len(kvsizbuf) == 0:
                                         break
                                     if len(kvsizbuf) != 4:
                                         return None
                                     kvsiz = struct.unpack(">I", kvsizbuf)[0]
-                                    kvtkn = ftag.read(4)
+                                    kvtkn = tag.read(4)
                                     if kvsiz == 1:
                                         return None
                                     elif kvsiz < 8:
                                         return None
-                                    kvbuf = ftag.read(kvsiz-8)
+                                    kvbuf = tag.read(kvsiz-8)
                                     if len(kvbuf) != kvsiz-8:
                                         return None
                                     if kvtkn == b'data':
