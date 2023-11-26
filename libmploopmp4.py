@@ -43,6 +43,106 @@ class Atom(object):
         self.consume(siz)
         return f_skip(self.f, siz)
 
+
+def process_meta(meta, f, comments):
+    meta.skip(4) # don't know why needed
+    while True:
+        ilstsizbuf = meta.read(4)
+        if len(ilstsizbuf) == 0:
+            break
+        if len(ilstsizbuf) != 4:
+            return None
+        ilstsiz = struct.unpack(">I", ilstsizbuf)[0]
+        ilsttkn = meta.read(4)
+        if ilstsiz == 1:
+            ilstsizbuf = meta.read(8)
+            ilstsiz = struct.unpack(">Q", ilstsizbuf)-8
+            if ilstsiz < 8:
+                return None
+        elif ilstsiz < 8:
+            return None
+        ilst = Atom(meta, f, ilstsiz-8)
+        if ilsttkn != b"ilst":
+            ilst.skip_all()
+            continue
+        while True:
+            tagsizbuf = ilst.read(4)
+            if len(tagsizbuf) == 0:
+                break
+            if len(tagsizbuf) != 4:
+                return None
+            tagsiz = struct.unpack(">I", tagsizbuf)[0]
+            tagtkn = ilst.read(4)
+            if tagsiz == 1:
+                tagsizbuf = ilst.read(8)
+                tagsiz = struct.unpack(">Q", tagsizbuf)-8
+                if tagsiz < 8:
+                    return None
+            elif tagsiz < 8:
+                return None
+            tag = Atom(ilst, f, tagsiz-8)
+            rawdata = None
+            data = None
+            mean = None
+            name = None
+            while True:
+                kvsizbuf = tag.read(4)
+                if len(kvsizbuf) == 0:
+                    break
+                if len(kvsizbuf) != 4:
+                    return None
+                kvsiz = struct.unpack(">I", kvsizbuf)[0]
+                kvtkn = tag.read(4)
+                if kvsiz == 1:
+                    return None
+                elif kvsiz < 8:
+                    return None
+                kvbuf = tag.read(kvsiz-8)
+                if len(kvbuf) != kvsiz-8:
+                    return None
+                if kvtkn == b'data':
+                    if kvbuf[0:8] == b'\x00\x00\x00\x01\x00\x00\x00\x00': # text
+                        data = kvbuf[8:].decode("utf-8")
+                        rawdata = None
+                    elif kvbuf[0:8] == b'\x00\x00\x00\x00\x00\x00\x00\x00': # uint8
+                        data = None
+                        rawdata = kvbuf[8:]
+                elif kvtkn == b'mean':
+                    mean = kvbuf
+                elif kvtkn == b'name':
+                    name = kvbuf
+            tagtkns = {
+                    b'\xa9alb': 'ALBUM',
+                    b'\xa9ART': 'ARTIST',
+                    b'aART': 'ALBUMARTIST',
+                    b'\xa9cmt': 'COMMENT',
+                    b'\xa9day': 'YEAR',
+                    b'\xa9nam': 'TITLE',
+                    b'\xa9gen': 'GENRE',
+                    b'\xa9wrt': 'COMPOSER',
+                    b'\xa9too': 'ENCODER',
+                    b'cprt': 'COPYRIGHT',
+                    b'desc': 'DESCRIPTION',
+                    b'\xa9enc': 'ENCODED-BY',
+            }
+            if tagtkn == b'trkn' and rawdata:
+                if rawdata[0:3] == b'\x00\x00\x00' and rawdata[4:5] == b'\x00' and rawdata[6:8] == b'\x00\x00':
+                    comments.append("TRACKNUMBER=" + str(struct.unpack("B", rawdata[3:4])[0]) + "/" + str(struct.unpack("B", rawdata[5:6])[0]))
+                pass
+            elif tagtkn == b'disk' and rawdata:
+                if rawdata[0:3] == b'\x00\x00\x00' and rawdata[4:5] == b'\x00':
+                    comments.append("DISCNUMBER=" + str(struct.unpack("B", rawdata[3:4])[0]) + "/" + str(struct.unpack("B", rawdata[5:6])[0]))
+                pass
+            elif tagtkn == b'----':
+                if mean == b'\0\0\0\0com.apple.iTunes':
+                    if name == b'\0\0\0\0replaygain_track_gain':
+                        comments.append("REPLAYGAIN_TRACK_GAIN=" + data + " dB")
+                    elif name == b'\0\0\0\0replaygain_album_gain':
+                        comments.append("REPLAYGAIN_ALBUM_GAIN=" + data + " dB")
+            elif tagtkn in tagtkns:
+                comments.append(tagtkns[tagtkn]+'='+data)
+    return True
+
 def mp4_tags(fn):
     comments = []
     try:
@@ -96,6 +196,9 @@ def mp4_tags(fn):
                     elif udtasiz < 8:
                         return None
                     udta = Atom(moov, f, udtasiz-8)
+                    if udtatkn == b"meta":
+                        if process_meta(udta, f, comments) is None:
+                            return None
                     if udtatkn != b"udta":
                         udta.skip_all()
                         continue
@@ -118,102 +221,8 @@ def mp4_tags(fn):
                         if metatkn != b"meta":
                             meta.skip_all()
                             continue
-                        meta.skip(4) # don't know why needed
-                        while True:
-                            ilstsizbuf = meta.read(4)
-                            if len(ilstsizbuf) == 0:
-                                break
-                            if len(ilstsizbuf) != 4:
-                                return None
-                            ilstsiz = struct.unpack(">I", ilstsizbuf)[0]
-                            ilsttkn = meta.read(4)
-                            if ilstsiz == 1:
-                                ilstsizbuf = meta.read(8)
-                                ilstsiz = struct.unpack(">Q", ilstsizbuf)-8
-                                if ilstsiz < 8:
-                                    return None
-                            elif ilstsiz < 8:
-                                return None
-                            ilst = Atom(meta, f, ilstsiz-8)
-                            if ilsttkn != b"ilst":
-                                ilst.skip_all()
-                                continue
-                            while True:
-                                tagsizbuf = ilst.read(4)
-                                if len(tagsizbuf) == 0:
-                                    break
-                                if len(tagsizbuf) != 4:
-                                    return None
-                                tagsiz = struct.unpack(">I", tagsizbuf)[0]
-                                tagtkn = ilst.read(4)
-                                if tagsiz == 1:
-                                    tagsizbuf = ilst.read(8)
-                                    tagsiz = struct.unpack(">Q", tagsizbuf)-8
-                                    if tagsiz < 8:
-                                        return None
-                                elif tagsiz < 8:
-                                    return None
-                                tag = Atom(ilst, f, tagsiz-8)
-                                rawdata = None
-                                data = None
-                                mean = None
-                                name = None
-                                while True:
-                                    kvsizbuf = tag.read(4)
-                                    if len(kvsizbuf) == 0:
-                                        break
-                                    if len(kvsizbuf) != 4:
-                                        return None
-                                    kvsiz = struct.unpack(">I", kvsizbuf)[0]
-                                    kvtkn = tag.read(4)
-                                    if kvsiz == 1:
-                                        return None
-                                    elif kvsiz < 8:
-                                        return None
-                                    kvbuf = tag.read(kvsiz-8)
-                                    if len(kvbuf) != kvsiz-8:
-                                        return None
-                                    if kvtkn == b'data':
-                                        if kvbuf[0:8] == b'\x00\x00\x00\x01\x00\x00\x00\x00': # text
-                                            data = kvbuf[8:].decode("utf-8")
-                                            rawdata = None
-                                        elif kvbuf[0:8] == b'\x00\x00\x00\x00\x00\x00\x00\x00': # uint8
-                                            data = None
-                                            rawdata = kvbuf[8:]
-                                    elif kvtkn == b'mean':
-                                        mean = kvbuf
-                                    elif kvtkn == b'name':
-                                        name = kvbuf
-                                tagtkns = {
-                                        b'\xa9alb': 'ALBUM',
-                                        b'\xa9ART': 'ARTIST',
-                                        b'aART': 'ALBUMARTIST',
-                                        b'\xa9cmt': 'COMMENT',
-                                        b'\xa9day': 'YEAR',
-                                        b'\xa9nam': 'TITLE',
-                                        b'\xa9gen': 'GENRE',
-                                        b'\xa9wrt': 'COMPOSER',
-                                        b'\xa9too': 'ENCODER',
-                                        b'cprt': 'COPYRIGHT',
-                                        b'desc': 'DESCRIPTION',
-                                        b'\xa9enc': 'ENCODED-BY',
-                                }
-                                if tagtkn == b'trkn' and rawdata:
-                                    if rawdata[0:3] == b'\x00\x00\x00' and rawdata[4:5] == b'\x00' and rawdata[6:8] == b'\x00\x00':
-                                        comments.append("TRACKNUMBER=" + str(struct.unpack("B", rawdata[3:4])[0]) + "/" + str(struct.unpack("B", rawdata[5:6])[0]))
-                                    pass
-                                elif tagtkn == b'disk' and rawdata:
-                                    if rawdata[0:3] == b'\x00\x00\x00' and rawdata[4:5] == b'\x00':
-                                        comments.append("DISCNUMBER=" + str(struct.unpack("B", rawdata[3:4])[0]) + "/" + str(struct.unpack("B", rawdata[5:6])[0]))
-                                    pass
-                                elif tagtkn == b'----':
-                                    if mean == b'\0\0\0\0com.apple.iTunes':
-                                        if name == b'\0\0\0\0replaygain_track_gain':
-                                            comments.append("REPLAYGAIN_TRACK_GAIN=" + data + " dB")
-                                        elif name == b'\0\0\0\0replaygain_album_gain':
-                                            comments.append("REPLAYGAIN_ALBUM_GAIN=" + data + " dB")
-                                elif tagtkn in tagtkns:
-                                    comments.append(tagtkns[tagtkn]+'='+data)
+                        if process_meta(meta, f, comments) is None:
+                            return None
                 return comments
     except:
         return None
