@@ -45,9 +45,13 @@ class Atom(object):
 
 
 def process_meta(meta, f, comments):
-    meta.skip(4) # don't know why needed
+    vflags = meta.read(4) # version, 1 byte, flags, 3 bytes
     while True:
-        ilstsizbuf = meta.read(4)
+        if vflags != b"\x00\x00\x00\x00" and vflags is not None:
+            ilstsizbuf = vflags
+        else:
+            ilstsizbuf = meta.read(4)
+        vflags = None
         if len(ilstsizbuf) == 0:
             break
         if len(ilstsizbuf) != 4:
