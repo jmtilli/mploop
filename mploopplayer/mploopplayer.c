@@ -262,6 +262,8 @@ int read_char(void)
 	return '\0';
 }
 
+char *old_status = NULL;
+
 void print_status(const char *fmt, ...)
 {
 	va_list ap;
@@ -284,13 +286,19 @@ void print_status(const char *fmt, ...)
 	va_start(ap, fmt);
 	vsnprintf(buf, len+1, fmt, ap);
 	va_end(ap);
+	if (old_status && strcmp(buf, old_status) == 0)
+	{
+		free(buf);
+		return;
+	}
 	printf("%s", buf);
 	for (i = 0; i < max_len - len; i++)
 	{
 		putchar(' ');
 	}
 	putchar('\r');
-	free(buf);
+	free(old_status);
+	old_status = buf;
 }
 
 int seeks = 0;
