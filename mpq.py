@@ -17,8 +17,9 @@ libmploop.touch()
 shuffle = False
 insert = False
 urlmode = False
+count_to_add = None
 
-opts, args = getopt.getopt(sys.argv[1:], "siu")
+opts, args = getopt.getopt(sys.argv[1:], "siuc:")
 for o, a in opts:
     if o == '-s':
         shuffle = True
@@ -26,6 +27,8 @@ for o, a in opts:
         insert = True
     elif o == '-u':
         urlmode = True
+    elif o == '-c':
+        count_to_add = int(a)
     else:
         assert False, "unhandled option"
 
@@ -151,6 +154,9 @@ for fl in args:
 
 if shuffle:
     random.shuffle(aps)
+
+if count_to_add is not None:
+    aps = aps[0:count_to_add]
 
 with libmploop.DbLock() as lck:
     if insert:
