@@ -18,8 +18,9 @@ shuffle = False
 insert = False
 urlmode = False
 count_to_add = None
+skipplaylist = False
 
-opts, args = getopt.getopt(sys.argv[1:], "siuc:")
+opts, args = getopt.getopt(sys.argv[1:], "siuPc:")
 for o, a in opts:
     if o == '-s':
         shuffle = True
@@ -27,6 +28,8 @@ for o, a in opts:
         insert = True
     elif o == '-u':
         urlmode = True
+    elif o == '-P':
+        skipplaylist = True
     elif o == '-c':
         count_to_add = int(a)
     else:
@@ -145,7 +148,7 @@ for fl in args:
     if not url and not os.path.isfile(ap):
         print(fl + " is not file")
         sys.exit(1)
-    if not url:
+    if not url and not skipplaylist:
         pl = libplaylist.get_playlist(ap)
         if pl is not None:
             aps += [libmploop.escape(ap2) for ap2 in pl]
