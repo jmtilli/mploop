@@ -995,7 +995,8 @@ const char *get_vorbiskey(const char *key, const char *value)
 			float tmp = strtof(value, &endptr);
 			if (*endptr == '\0')
 			{
-				albumgain = tmp/256.0 + offset;
+				// Opus has -23 LUFS, ReplayGain -18 LUFS
+				albumgain = tmp/256.0 + offset + 5.0;
 				has_albumgain = 128;
 			}
 		}
@@ -1008,7 +1009,8 @@ const char *get_vorbiskey(const char *key, const char *value)
 			float tmp = strtof(value, &endptr);
 			if (*endptr == '\0')
 			{
-				trackgain = tmp/256.0 + offset;
+				// Opus has -23 LUFS, ReplayGain -18 LUFS
+				trackgain = tmp/256.0 + offset + 5.0;
 				has_trackgain = 128;
 			}
 		}
