@@ -31,3 +31,4 @@ install_link mpplaypause
 install_link mpprev
 install_link mprewind
 install_link mpseek
+install_link mpnp
