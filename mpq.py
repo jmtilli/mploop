@@ -20,7 +20,11 @@ urlmode = False
 count_to_add = None
 skipplaylist = False
 
-opts, args = getopt.getopt(sys.argv[1:], "siuPc:")
+def usage():
+    print("Usage: mpq [-s] [-i] [-u] [-P] [-c cnt]")
+    sys.exit(1)
+
+opts, args = getopt.getopt(sys.argv[1:], "siuPc:h")
 for o, a in opts:
     if o == '-s':
         shuffle = True
@@ -32,6 +36,8 @@ for o, a in opts:
         skipplaylist = True
     elif o == '-c':
         count_to_add = int(a)
+    elif o == '-h':
+        usage()
     else:
         assert False, "unhandled option"
 
