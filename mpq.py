@@ -21,7 +21,8 @@ count_to_add = None
 skipplaylist = False
 
 def usage():
-    print("Usage: mpq [-s] [-i] [-u] [-P] [-c cnt]")
+    print("Usage: mpq [-s] [-i] [-u] [-P] [-c cnt] file ...")
+    print("Usage: mpq")
     sys.exit(1)
 
 opts, args = getopt.getopt(sys.argv[1:], "siuPc:h")
