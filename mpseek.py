@@ -7,6 +7,7 @@ import math
 
 if len(sys.argv) != 2:
     print("Usage: " + (sys.argv and sys.argv[0] or "mpseek") + " seconds")
+    sys.exit(1)
 
 s = ""
 smploop = ""
