@@ -329,14 +329,14 @@ def get_mp3_gain(ln):
                 raise
             return (has_some_gain, 0.0, comments)
         for line in out[1:]:
-            if re.match("^Recommended \"Track\" dB change: [-+]?[0-9]+\.[0-9]+$", line):
+            if re.match("^Recommended \"Track\" dB change: [-+]?[0-9]+\\.[0-9]+$", line):
                 numval = re.sub("^Recommended \"Track\" dB change: ", "", line)
                 try:
                     trackgain_db = float(numval) + offset
                     has_some_gain = True
                 except:
                     pass
-            elif re.match("^Recommended \"Album\" dB change: [-+]?[0-9]+\.[0-9]+$", line):
+            elif re.match("^Recommended \"Album\" dB change: [-+]?[0-9]+\\.[0-9]+$", line):
                 numval = re.sub("^Recommended \"Album\" dB change: ", "", line)
                 try:
                     albumgain_db = float(numval) + offset
@@ -353,14 +353,14 @@ def get_mp3_gain(ln):
                 raise
             return (has_some_gain, 0.0, comments)
         for line in out[1:]:
-            if re.match("^Recommended \"Track\" dB change: [-+]?[0-9]+\.[0-9]+$", line):
+            if re.match("^Recommended \"Track\" dB change: [-+]?[0-9]+\\.[0-9]+$", line):
                 numval = re.sub("^Recommended \"Track\" dB change: ", "", line)
                 try:
                     trackgain_db = float(numval) + offset
                     has_some_gain = True
                 except:
                     pass
-            elif re.match("^Recommended \"Album\" dB change: [-+]?[0-9]+\.[0-9]+$", line):
+            elif re.match("^Recommended \"Album\" dB change: [-+]?[0-9]+\\.[0-9]+$", line):
                 numval = re.sub("^Recommended \"Album\" dB change: ", "", line)
                 try:
                     albumgain_db = float(numval) + offset
