@@ -2335,7 +2335,11 @@ int main(int argc, char **argv)
 					avfctx->streams[aidx]->codecpar->coded_side_data,
 					avfctx->streams[aidx]->codecpar->nb_coded_side_data,
 					AV_PKT_DATA_REPLAYGAIN);
-			av_gain = (const AVReplayGain*)sd->data;
+			av_gain = NULL;
+			if (sd)
+			{
+				av_gain = (const AVReplayGain*)sd->data;
+			}
 			size = sd->size;
 #else
 			av_gain = (AVReplayGain*)av_stream_get_side_data(avfctx->streams[aidx], AV_PKT_DATA_REPLAYGAIN, &size);
