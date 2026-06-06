@@ -1,0 +1,48 @@
+.Dd June 06, 2026
+.Os Linux
+.Dt VIMP 1 LOCAL
+.Sh NAME
+.Nm vimp
+.Nd edit the mploop queue
+.Sh SYNOPSIS
+.Nm vimp
+.Sh DESCRIPTION
+.Nm vimp
+is a tool to edit the queue of
+.Xr mploop 1
+music player.
+.Sh "EXIT STATUS"
+.Nm vimp
+exits with zero exit status for success. If there's an error such as
+invoking
+.Nm vimp
+with unsupported command-line arguments, it returns with a nonzero
+exit status.
+.Sh ENVIRONMENT
+.Nm vimp
+uses the following environment variables:
+.Pp
+.Bl -column EDITOR -compact
+.It Ev VISUAL Ta the preferred visual full-screen editor of the user
+.It Ev EDITOR Ta the preferred editor of the user
+.It Ev HOME Ta the home directory of the user
+.El
+.Pp
+If neither VISUAL nor EDITOR is set, then "vi" is used as the text editor.
+.Sh "SEE ALSO"
+.Xr mploop 1
+.Sh HISTORY
+.Xr mploop 1
+was created in September to November 2023. It has been maintained since.
+.Sh DISTRIBUTION
+.Xr mploop 1
+is available at https://github.com/jmtilli/mploop
+.Sh BUGS
+No bugs known in
+.Nm vimp .
+.Sh AUTHOR
+Juha-Matti Tilli (juha-matti.tilli@iki.fi)
+.Sh COPYRIGHT
+Copyright \(co 2023-4,2026 Juha-Matti Tilli
+.Pp
+Licensed under the MIT license.

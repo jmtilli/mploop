@@ -1,0 +1,55 @@
+.Dd June 06, 2026
+.Os Linux
+.Dt MPLOOP 1 LOCAL
+.Sh NAME
+.Nm mploop
+.Nd the queue-based command line music player
+.Sh SYNOPSIS
+.Nm mploop
+.Sh DESCRIPTION
+.Nm mploop
+is a tool to play music from a queue using a command line interface to manage
+the queue.
+.Sh "EXIT STATUS"
+.Nm mploop
+does not exit except when interrupted, since it waits for music to arrive
+into the queue to play it. If there's an error in mploop itself,
+.Nm mploop
+returns with a nonzero exit status. However, if there's an error in playing
+music,
+.Nm mploop
+skips the song where the error occurred and continues playing music.
+.Sh ENVIRONMENT
+.Nm mploop
+uses the following environment variables:
+.Pp
+.Bl -column HOME -compact
+.It Ev HOME Ta the home directory of the user
+.El
+.Sh "SEE ALSO"
+.Xr mpclear 1 ,
+.Xr mpnext 1 ,
+.Xr mpnp 1 ,
+.Xr mpplaypause 1 ,
+.Xr mpprev 1 ,
+.Xr mpq 1 ,
+.Xr mprewind 1 ,
+.Xr mprm 1 ,
+.Xr mpseek 1 ,
+.Xr mpshuffle 1 ,
+.Xr vimp 1
+.Sh HISTORY
+.Xr mploop 1
+was created in September to November 2023. It has been maintained since.
+.Sh DISTRIBUTION
+.Xr mploop 1
+is available at https://github.com/jmtilli/mploop
+.Sh BUGS
+No bugs known in
+.Nm mploop .
+.Sh AUTHOR
+Juha-Matti Tilli (juha-matti.tilli@iki.fi)
+.Sh COPYRIGHT
+Copyright \(co 2023-4,2026 Juha-Matti Tilli
+.Pp
+Licensed under the MIT license.

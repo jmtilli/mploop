@@ -1,0 +1,67 @@
+.Dd June 06, 2026
+.Os Linux
+.Dt MPQ 1 LOCAL
+.Sh NAME
+.Nm mpq
+.Nd print queue or enqueue into queue of mploop music player
+.Sh SYNOPSIS
+.Nm mpq
+.Op Fl siuPh
+.Op Fl c Ar cnt
+.Op Ar filename ...
+.Sh DESCRIPTION
+.Nm mpq
+is a tool to print the queue or enqueue songs into the queue of the 
+.Xr mploop 1
+music player. If you execute it with no command-line arguments, it prints
+the queue; with arguments it adds songs to the queue.
+.Sh OPTIONS
+.Bl -tag -width "filename"
+.It Fl s
+Shuffle the songs to be added but don't shuffle the entire queue.
+.It Fl i
+Insert mode: insert the songs into the beginning, not to the end.
+.It Fl u
+URL mode: insert something that may be a network stream.
+.It Fl P
+Skip playlist; if the file is a playlist, add it to queue rather than adding
+all its songs to the queue.
+.It Fl h
+Help mode: print usage and exit.
+.It Fl c Ar cnt
+Add only this many songs; if there are more songs to be added, skip the rest.
+.It filename
+The filename of the song to add, relative to the current working directory of
+the
+.Nm mpq
+tool.
+.Sh "EXIT STATUS"
+.Nm mpq
+exits with zero exit status for success. If there's an error such as
+invoking
+.Nm mpq
+with a file that does not exist, it returns with a nonzero exit status.
+.Sh ENVIRONMENT
+.Nm mpq
+uses the following environment variables:
+.Pp
+.Bl -column HOME -compact
+.It Ev HOME Ta the home directory of the user
+.El
+.Sh "SEE ALSO"
+.Xr mploop 1
+.Sh HISTORY
+.Xr mploop 1
+was created in September to November 2023. It has been maintained since.
+.Sh DISTRIBUTION
+.Xr mploop 1
+is available at https://github.com/jmtilli/mploop
+.Sh BUGS
+No bugs known in
+.Nm mpq .
+.Sh AUTHOR
+Juha-Matti Tilli (juha-matti.tilli@iki.fi)
+.Sh COPYRIGHT
+Copyright \(co 2023-4,2026 Juha-Matti Tilli
+.Pp
+Licensed under the MIT license.

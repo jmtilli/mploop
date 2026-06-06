@@ -1,0 +1,53 @@
+.Dd June 06, 2026
+.Os Linux
+.Dt MPRM 1 LOCAL
+.Sh NAME
+.Nm mprm
+.Nd remove song from queue of mploop music player
+.Sh SYNOPSIS
+.Nm mprm
+.Ar index1
+.Op Ar index2 ...
+.Sh DESCRIPTION
+.Nm mprm
+is a tool to remove songs from the queue of the
+.Xr mploop 1
+music player. Before removing songs, you want to know their index by
+using the
+.Xr mpq 1
+command.
+.Sh OPTIONS
+.Bl -tag -width "indexN"
+.It indexN
+The index of the song to remove
+.Sh "EXIT STATUS"
+.Nm mprm
+exits with zero exit status for success. If there's an error such as
+invoking
+.Nm mprm
+with no command-line arguments, it returns with a nonzero
+exit status.
+.Sh ENVIRONMENT
+.Nm mprm
+uses the following environment variables:
+.Pp
+.Bl -column HOME -compact
+.It Ev HOME Ta the home directory of the user
+.El
+.Sh "SEE ALSO"
+.Xr mploop 1
+.Sh HISTORY
+.Xr mploop 1
+was created in September to November 2023. It has been maintained since.
+.Sh DISTRIBUTION
+.Xr mploop 1
+is available at https://github.com/jmtilli/mploop
+.Sh BUGS
+No bugs known in
+.Nm mprm .
+.Sh AUTHOR
+Juha-Matti Tilli (juha-matti.tilli@iki.fi)
+.Sh COPYRIGHT
+Copyright \(co 2023-4,2026 Juha-Matti Tilli
+.Pp
+Licensed under the MIT license.

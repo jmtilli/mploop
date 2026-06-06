@@ -1,0 +1,44 @@
+.Dd June 06, 2026
+.Os Linux
+.Dt MPSHUFFLE 1 LOCAL
+.Sh NAME
+.Nm mpshuffle
+.Nd shuffle the mploop queue
+.Sh SYNOPSIS
+.Nm mpshuffle
+.Sh DESCRIPTION
+.Nm mpshuffle
+is a tool to shuffle the queue of
+.Xr mploop 1
+music player.
+.Sh "EXIT STATUS"
+.Nm mpshuffle
+exits with zero exit status for success. If there's an error such as
+invoking
+.Nm mpshuffle
+with unsupported command-line arguments, it returns with a nonzero
+exit status.
+.Sh ENVIRONMENT
+.Nm mpshuffle
+uses the following environment variables:
+.Pp
+.Bl -column HOME -compact
+.It Ev HOME Ta the home directory of the user
+.El
+.Sh "SEE ALSO"
+.Xr mploop 1
+.Sh HISTORY
+.Xr mploop 1
+was created in September to November 2023. It has been maintained since.
+.Sh DISTRIBUTION
+.Xr mploop 1
+is available at https://github.com/jmtilli/mploop
+.Sh BUGS
+No bugs known in
+.Nm mpshuffle .
+.Sh AUTHOR
+Juha-Matti Tilli (juha-matti.tilli@iki.fi)
+.Sh COPYRIGHT
+Copyright \(co 2023-4,2026 Juha-Matti Tilli
+.Pp
+Licensed under the MIT license.
