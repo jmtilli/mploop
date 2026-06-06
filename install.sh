@@ -16,26 +16,30 @@ fi
 
 install_bin()
 {
-	cp "$1/$2" "$PREFIX/bin/.tmp.mploopinst.$$.$2" || die "Can't create temporary binary"
-	mv "$PREFIX/bin/.tmp.mploopinst.$$.$2" "$PREFIX/bin/$2" || die "Can't rename temporary binary"
+	cp "$1/$2" "$PREFIX/bin/.tmp.mploopinst.$$.$2" || die "Can't create temporary binary"
+	mv "$PREFIX/bin/.tmp.mploopinst.$$.$2" "$PREFIX/bin/$2" || die "Can't rename temporary binary"
 }
 
 install_share()
 {
-	cp "$1" "$PREFIX/share/mploop/.tmp.mploopinst.$$.$1" || die "Can't create temporary file"
-	mv "$PREFIX/share/mploop/.tmp.mploopinst.$$.$1" "$PREFIX/share/mploop/$1" || die "Can't rename temporary file"
+	cp "$1" "$PREFIX/share/mploop/.tmp.mploopinst.$$.$1" || die "Can't create temporary file"
+	mv "$PREFIX/share/mploop/.tmp.mploopinst.$$.$1" "$PREFIX/share/mploop/$1" || die "Can't rename temporary file"
 }
 
 install_link()
 {
-	ln -s "$PREFIX/share/mploop/$1.py" "$PREFIX/bin/.tmp.mploopinst.$$.$1" || die "Can't create symlink"
-	mv "$PREFIX/bin/.tmp.mploopinst.$$.$1" "$PREFIX/bin/$1" || die "Can't rename symlink"
+	ln -s "$PREFIX/share/mploop/$1.py" "$PREFIX/bin/.tmp.mploopinst.$$.$1" || die "Can't create symlink"
+	mv "$PREFIX/bin/.tmp.mploopinst.$$.$1" "$PREFIX/bin/$1" || die "Can't rename symlink"
 }
 
-mkdir -p "$PREFIX"/bin || die "Can't create bin directory"
-mkdir -p "$PREFIX"/share/mploop || die "Can't create share/mploop directory"
+mkdir -p "$PREFIX"/bin || die "Can't create bin directory"
+mkdir -p "$PREFIX"/share/mploop || die "Can't create share/mploop directory"
 
-install_bin mploopplayer mploopplayer
+if [ -e mploopplayer/mploopplayer ]; then
+  install_bin mploopplayer mploopplayer
+else
+  echo "No binary, not a problem, using MPlayer"
+fi
 
 install_share libmploopflac.py
 install_share libmploopmp4.py
