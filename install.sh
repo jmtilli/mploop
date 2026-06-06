@@ -14,6 +14,9 @@ if [ "$#" -ge 1 ]; then
 	PREFIX="$1"
 fi
 
+H="`hostname`"
+P="$PREFIX"
+
 install_bin()
 {
 	cp "$1/$2" "$PREFIX/bin/.tmp.mploopinst.$$.$2" || die "Can't create temporary binary"
@@ -24,6 +27,13 @@ install_share()
 {
 	cp "$1" "$PREFIX/share/mploop/.tmp.mploopinst.$$.$1" || die "Can't create temporary file"
 	mv "$PREFIX/share/mploop/.tmp.mploopinst.$$.$1" "$PREFIX/share/mploop/$1" || die "Can't rename temporary file"
+}
+
+instman()
+{
+  mkdir -p "$P/man/man$2" || die "Can't create man directory"
+  cp "$1.$2" "$P/man/man$2/.$1.$2.mploopinst.$$.$H" || die "Can't install man page"
+  mv "$P/man/man$2/.$1.$2.mploopinst.$$.$H" "$P/man/man$2/$1.$2" || die "Can't rename man page"
 }
 
 install_link()
@@ -73,3 +83,16 @@ install_link mpprev
 install_link mprewind
 install_link mpseek
 install_link mpnp
+
+instman mploop 1
+instman mpclear 1
+instman mpq 1
+instman mprm 1
+instman mpshuffle 1
+instman vimp 1
+instman mpnext 1
+instman mpplaypause 1
+instman mpprev 1
+instman mprewind 1
+instman mpseek 1
+instman mpnp 1
