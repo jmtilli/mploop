@@ -329,7 +329,7 @@ static inline int32_t for_every_sample32(int32_t x)
 	}
 	return ((int32_t)res);
 }
-static inline int32_t for_every_sample16(int16_t x)
+static inline int16_t for_every_sample16(int16_t x)
 {
 	float res = ((float)x) * volume_mul;
 	if (res >= (float)INT16_MAX) {
