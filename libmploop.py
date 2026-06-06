@@ -24,6 +24,13 @@ offset = 6.0
 mploopplayer = os.path.dirname(os.path.realpath(sys.argv[0])) + '/mploopplayer/mploopplayer'
 if not os.access(mploopplayer, os.X_OK):
     mploopplayer = None
+    try:
+        proc=subprocess.Popen(["mploopplayer"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out,err = proc.communicate()
+        proc.wait()
+        mploopplayer = "mploopplayer"
+    except:
+        pass
 
 dbexpanded = os.path.expanduser('~') + '/.mploop/db.txt'
 pastexpanded = os.path.expanduser('~') + '/.mploop/past.txt'
