@@ -10,6 +10,84 @@
 .Nm mploop
 is a tool to play music from a queue using a command line interface to manage
 the queue.
+.Nm mploop
+is not a daemon, it uses the terminal. It is intended to be started in a
+.Xr screen 1
+or a
+.Xr tmux 1
+window.
+.Sh "QUEUE MANAGEMENT"
+The queue is managed by the following commands:
+.Bl -hang -offset 5 -width "012345678901234"
+.It Xr mpq 1
+Display queue or enqueue new songs.
+.It Xr mprm 1
+Remove songs from queue.
+.It Xr mpclear 1
+Clear the entire queue
+.It Xr mpshuffle 1
+Shuffle the entire queue
+.It Xr vimp 1
+Perform more complex queue management by a text editor
+.El
+.Sh "COMMAND-LINE CONTROL"
+The player can be controlled from the command line using these commands:
+.Bl -hang -offset 5 -width "012345678901234"
+.It Xr mpprev 1
+Jump to previous song or N songs backwards
+.It Xr mpnext 1
+Jump to next song or N songs forwards
+.It Xr mpplaypause 1
+Play or pause the playback
+.It Xr mprewind 1
+Rewind the current song
+.It Xr mpseek 1
+Perform more complex seeks backwards/forwards in the current song
+.El
+.Sh "INTERACTIVE CONTROL"
+To play music,
+.Nm mploop
+uses either
+.Xr mplayer 1
+or the included player mploopplayer. Both share the same basic shortcuts.
+.Pp
+.Sy "keyboard control"
+.Pp
+.Bl -hang -offset 5 -width "01234567890123456789"
+.It "LEFT AND RIGHT"
+Seek backward/\:forward 10 seconds.
+.It "UP and DOWN"
+Seek forward/\:backward 1 minute.
+.It "PGUP and PGDWN"
+Seek forward/\:backward 10 minutes.
+.It "q / ENTER"
+Go forward in the playlist.
+.It "p / SPACE"
+Pause (pressing again unpauses).
+.It "/ and *"
+Decrease/increase volume.
+.It "9 and 0"
+Decrease/increase volume.
+.El
+.Sh "FILE FORMAT SUPPORT"
+.Nm mploop
+can play files using the included mploopplayer or by using
+.Xr mplayer 1 .
+If the included mploopplayer is used, then
+.Nm mploop
+can play back all formats supported by libavformat and libavcodec.
+.Pp
+ReplayGain is supported for Ogg Vorbis, Opus, FLAC, MP3 and MP4 (AAC).
+Also comment tags are supported for the same formats. The comment tags are
+automatically converted to Vorbis comments and then displayed.
+.Sh "AUDIO DRIVER SUPPORT"
+.Nm mploop
+can output audio using the included mploopplayer or by using
+.Xr mplayer 1 .
+If the included mploopplayer is used, then
+.Nm mploop
+plays back audio using SDL2 so it supports all audio drivers that the SDL2
+library supports.
 .Sh "EXIT STATUS"
 .Nm mploop
 does not exit except when interrupted, since it waits for music to arrive
@@ -46,7 +124,12 @@ was created in September to November 2023. It has been maintained since.
 is available at https://github.com/jmtilli/mploop
 .Sh BUGS
 No bugs known in
-.Nm mploop .
+.Nm mploop ,
+but some utilities like
+.Xr mpseek 1
+and
+.Xr mprewind 1
+have bugs.
 .Sh AUTHOR
 Juha-Matti Tilli (juha-matti.tilli@iki.fi)
 .Sh COPYRIGHT
