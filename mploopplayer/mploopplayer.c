@@ -2821,6 +2821,33 @@ int main(int argc, char **argv)
 			if (ts < 0) {
 				ts = 0;
 			}
+			if (!avfctx->pb)
+			{
+				seeks = 0;
+				continue;
+			}
+#ifdef AVFMTCTX_UNSEEKABLE
+			if (avfctx->ctx_flags & AVFMTCTX_UNSEEKABLE)
+			{
+				seeks = 0;
+				continue;
+			}
+#endif
+#ifdef AVIO_SEEKABLE_NORMAL
+#ifdef AVIO_SEEKABLE_TIME
+			if (!(avfctx->pb->seekable & (AVIO_SEEKABLE_NORMAL|AVIO_SEEKABLE_TIME)))
+			{
+				seeks = 0;
+				continue;
+			}
+#else
+			if (!(avfctx->pb->seekable & (AVIO_SEEKABLE_NORMAL)))
+			{
+				seeks = 0;
+				continue;
+			}
+#endif
+#endif
 			avformat_seek_file(avfctx, aidx, INT64_MIN, ts, INT64_MAX, 0);
 			SDL_ClearQueuedAudio(audid);
 			seeks = 0;
