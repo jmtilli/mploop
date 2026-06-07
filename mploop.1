@@ -16,6 +16,15 @@ is not a daemon, it uses the terminal. It is intended to be started in a
 or a
 .Xr tmux 1
 window.
+.Pp
+Although
+.Nm mploop
+is not a daemon, out of the existing music players it is most similar with
+.Xr mpd 1 .
+However, unlike
+.Xr mpd 1 ,
+mploop does not want to scan your entire music library. Instead, arbitrary
+files can be added to the queue from any directory.
 .Sh "QUEUE MANAGEMENT"
 The queue is managed by the following commands:
 .Bl -hang -offset 5 -width "012345678901234"
