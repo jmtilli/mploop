@@ -3,7 +3,7 @@
 #include <termios.h>
 #include <signal.h>
 #include <math.h>
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include <libavutil/frame.h>
 #include <libavutil/mem.h>
 #include <libavutil/timestamp.h>

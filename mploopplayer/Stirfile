@@ -1,7 +1,16 @@
 @subfile
 @strict
 
-$LIBS = ["-lavformat", "-lavcodec", "-lavutil", "-lSDL2", "-lm"]
+$SDL2_CFLAGS ``= ["pkg-config", "sdl2", "--cflags"]
+$AVF_CFLAGS ``= ["pkg-config", "libavformat", "--cflags"]
+$AVU_CFLAGS ``= ["pkg-config", "libavutil", "--cflags"]
+$AVC_CFLAGS ``= ["pkg-config", "libavcodec", "--cflags"]
+$SDL2_LIBS ``= ["pkg-config", "sdl2", "--libs"]
+$AVF_LIBS ``= ["pkg-config", "libavformat", "--libs"]
+$AVU_LIBS ``= ["pkg-config", "libavutil", "--libs"]
+$AVC_LIBS ``= ["pkg-config", "libavcodec", "--libs"]
+$CFLAGS += [@$SDL2_CFLAGS, @$AVF_CFLAGS, @$AVU_CFLAGS, @$AVC_CFLAGS]
+$LIBS = [@$SDL2_LIBS, @$AVF_LIBS, @$AVU_LIBS, @$AVC_LIBS, "-lm"]
 
 @phonyrule: 'all': 'mploopplayer'
 
