@@ -4,6 +4,7 @@ import os
 import re
 import sys
 import subprocess
+import libmploop
 import xml.etree.ElementTree as ET
 
 MAX_LINE = 4097
@@ -242,12 +243,22 @@ def get_m3u_playlist(x):
                         continue
                     if not os.access(key, os.R_OK):
                         continue
-                    proc = subprocess.Popen(["file", "-b", "--mime-type", "--", key], stdout=subprocess.PIPE)
-                    out,err = proc.communicate()
-                    proc.wait()
-                    mimetype = out.decode("us-ascii")
-                    if mimetype != "" and mimetype[-1] == '\n':
-                        mimetype = mimetype[:-1]
+                    if not libmploop.mploopplayer:
+                        proc = subprocess.Popen(["mplayer", "-really-quiet", "-vo", "null", "-ao", "null", "-frames", "0", "-identify", "--", key], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                        out,err = proc.communicate()
+                        proc.wait()
+                        if "ID_AUDIO_" in out.decode("iso-8859-1"):
+                            mimetype = "audio/unknown"
+                        else:
+                            mimetype = "application/unknown"
+                    else:
+                        proc = subprocess.Popen([libmploop.mploopplayer, "-i", "--", key], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                        out,err = proc.communicate()
+                        res = proc.wait()
+                        if "ID_AUDIO_" in out.decode("iso-8859-1") and res == 0:
+                            mimetype = "audio/unknown"
+                        else:
+                            mimetype = "application/unknown"
                     if mimetype[:6] == 'audio/' or mimetype[:6] == 'video/':
                         res.append(key)
 
