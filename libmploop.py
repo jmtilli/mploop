@@ -19,6 +19,13 @@ except ImportError:
     from io import StringIO
 import errno
 
+# ReplayGain was originally -20 dBFS (83 dB), but was later changed to -14
+# dBFS (89 dB) in the data itself. ReplayGain suggested an optional 6 dB
+# boost to have more equal volume on tagged and non-tagged tracks. Here this
+# offset implements the 6 dB boost. Note the offset2 in mploop.py which
+# reduces the volume of all music by offset2 dB, applying to both ReplayGain
+# and non-ReplayGain tracks. The offset here applies only to ReplayGain tracks.
+# offset means positive, but offset2 means negative.
 offset = 6.0
 
 mploopplayer = os.path.dirname(os.path.realpath(sys.argv[0])) + '/mploopplayer/mploopplayer'
@@ -575,7 +582,16 @@ def get_gain(ln):
             k,v = out1.split("=", 1)
             if k == "R128_TRACK_GAIN":
                 try:
-                    # Opus has -23 LUFS whereas ReplayGain has -18 LUFS
+                    # Opus has -23 LUFS whereas ReplayGain has -18 LUFS.
+                    # ReplayGain's -18 LUFS comes from pink noise at -20 dBFS
+                    # producing 83 dB in a calibrated room. Later, it was
+                    # decided that -20 dBFS is too quiet compared to most
+                    # music, and the target was changed to 89 dB, i.e. -14 dBFS.
+                    # This change to -14 dBFS is already reflected in
+                    # practically all ReplayGain files. -14 dBFS is the same
+                    # as -18 LUFS, if pink noise is used. -14 dBFS 1kHz sine
+                    # wave would be -14 LUFS. dBFS does not use filtering, LUFS
+                    # uses K-weighting filter.
                     r128trackgain_db = float(v)/256.0 + offset + 5.0
                 except:
                     pass

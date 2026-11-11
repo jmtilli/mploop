@@ -25,7 +25,21 @@ libmploop.touch()
 # - opusinfo or opustags
 # - AtomicParsley
 
+# ReplayGain was originally -20 dBFS (83 dB), but was later changed to -14
+# dBFS (89 dB) in the data itself. ReplayGain suggested an optional 6 dB
+# boost to have more equal volume on tagged and non-tagged tracks. In the file
+# libmploop.py, offset implements this 6 dB boost. This offset2 here reduces
+# the volume of all music by offset2 dB, applying to both ReplayGain and
+# non-ReplayGain tracks. The offset in libmploop.py applies only to ReplayGain
+# tracks. offset means positive, but offset2 means negative.
+#
+# The offset2 is important, because otherwise all music would be played nearly
+# as loudly as the "loudness war" era music, thus reducing dynamic range.
+# However, offset2 gives extra dynamic range headroom for all music.
 offset2 = 6.0
+
+# Extra offset of mploopplayer as compared to mplayer. This is negative, i.e.
+# bigger values reduce the volume of mploopplayer-played music.
 mploopplayer_extraoffset = 0.0
 
 mainlck = libmploop.MainLock()
