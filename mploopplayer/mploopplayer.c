@@ -2157,6 +2157,7 @@ int main(int argc, char **argv)
 	int sock = -1;
 	int usesock = 0;
 	int urlmode = 0;
+	int identify = 0;
 	const char *sockarg = NULL;
 	struct sockaddr_un sun;
 	uint32_t inqueue;
@@ -2166,8 +2167,11 @@ int main(int argc, char **argv)
 	AVStream *audio_stream;
 #endif
 
-	while ((opt = getopt(argc, argv, "us:g:GW:")) != -1) {
+	while ((opt = getopt(argc, argv, "ius:g:GW:")) != -1) {
 		switch (opt) {
+			case 'i':
+				identify = 1;
+				break;
 			case 'u':
 				urlmode = 1;
 				break;
@@ -2690,6 +2694,12 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Unknown audio format given by decoder\n");
 		handler_impl();
 		exit(1);
+	}
+	if (identify)
+	{
+		fprintf(stderr, "ID_AUDIO_FORMAT=detected\n");
+		handler_impl();
+		exit(0);
 	}
 	//printf("Rate %d\n", adecctx->sample_rate);
 	SDL_AudioSpec desired;
