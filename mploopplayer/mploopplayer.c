@@ -2697,7 +2697,7 @@ int main(int argc, char **argv)
 	}
 	if (identify)
 	{
-		fprintf(stderr, "ID_AUDIO_FORMAT=detected\n");
+		fprintf(stdout, "ID_AUDIO_FORMAT=detected\n");
 		handler_impl();
 		exit(0);
 	}
