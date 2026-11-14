@@ -438,7 +438,7 @@ void output_audio_frame(AVFrame *frame)
 	for (i = 0; i < frame->nb_samples; i++) {
 		for (chid = 0; chid < (chcount>2 ? 2 : chcount); chid++) {
 			int ch = chmap[chid];
-			if (bufloc + 1 > (int)sizeof(buf)) {
+			if (bufloc + 1 > (int)(sizeof(buf)/sizeof(*buf))) {
 				fprintf(stderr, "Buffer size insufficient, very strange audio file\n");
 				handler_impl();
 				exit(1);
@@ -520,7 +520,7 @@ void output_audio_frame(AVFrame *frame)
 	{
 		src_data.data_in = buf;
 		src_data.data_out = out_float;
-		src_data.output_frames = sizeof(out_float)/(chcount>2 ? 2 : chcount);
+		src_data.output_frames = sizeof(out_float)/sizeof(*out_float)/(chcount>2 ? 2 : chcount);
 		src_data.input_frames = bufloc/(chcount>2 ? 2 : chcount);
 		src_data.end_of_input = 0;
 		src_data.src_ratio = src_ratio;
