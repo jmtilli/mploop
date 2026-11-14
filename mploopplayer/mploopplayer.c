@@ -20,11 +20,17 @@
 #include <unistd.h>
 #include <poll.h>
 #include <fcntl.h>
+#include <sndio.h>
+
+#undef RECENT_SNDIO
+
+struct sio_hdl *hdl;
 
 int leftidx = -1;
 int rightidx = -1;
 SDL_AudioDeviceID audid;
-SDL_AudioSpec obtained;
+//SDL_AudioSpec obtained;
+struct sio_par obtained;
 AVCodecContext *adecctx;
 #if SDL_MAJOR_VERSION > 2 || (SDL_MAJOR_VERSION == 2 && SDL_MINOR_VERSION > 0) || (SDL_MAJOR_VERSION == 2 && SDL_MINOR_VERSION == 0 && SDL_PATCHLEVEL >= 7)
 SDL_AudioStream *sdl_stream;
@@ -63,6 +69,58 @@ void handler(int signum)
 	(void)signum;
 	handler_impl();
 	exit(0);
+}
+
+static inline int sdl_format_from_sio_par(const struct sio_par *sio_par)
+{
+	if (sio_par->bps == 4 && sio_par->bits == 32 && sio_par->sig == 1 && sio_par->le == SIO_LE_NATIVE && sio_par->msb)
+	{
+		return AUDIO_S32SYS;
+	}
+	if (sio_par->bps == 2 && sio_par->bits == 16 && sio_par->sig == 0 && sio_par->le == SIO_LE_NATIVE && sio_par->msb)
+	{
+		return AUDIO_U16SYS;
+	}
+	if (sio_par->bps == 2 && sio_par->bits == 16 && sio_par->sig == 1 && sio_par->le == SIO_LE_NATIVE && sio_par->msb)
+	{
+		return AUDIO_S16SYS;
+	}
+	if (sio_par->bps == 1 && sio_par->bits == 8 && sio_par->sig == 0)
+	{
+		return AUDIO_U8;
+	}
+	if (sio_par->bps == 1 && sio_par->bits == 8 && sio_par->sig == 1)
+	{
+		return AUDIO_S8;
+	}
+
+	if (sio_par->bps == 4 && sio_par->bits == 32 && sio_par->sig == 1 && sio_par->le && sio_par->msb)
+	{
+		return AUDIO_S32LSB;
+	}
+	if (sio_par->bps == 2 && sio_par->bits == 16 && sio_par->sig == 0 && sio_par->le && sio_par->msb)
+	{
+		return AUDIO_U16LSB;
+	}
+	if (sio_par->bps == 2 && sio_par->bits == 16 && sio_par->sig == 1 && sio_par->le && sio_par->msb)
+	{
+		return AUDIO_S16LSB;
+	}
+
+	if (sio_par->bps == 4 && sio_par->bits == 32 && sio_par->sig == 1 && sio_par->le == 0 && sio_par->msb)
+	{
+		return AUDIO_S32MSB;
+	}
+	if (sio_par->bps == 2 && sio_par->bits == 16 && sio_par->sig == 0 && sio_par->le == 0 && sio_par->msb)
+	{
+		return AUDIO_U16MSB;
+	}
+	if (sio_par->bps == 2 && sio_par->bits == 16 && sio_par->sig == 1 && sio_par->le == 0 && sio_par->msb)
+	{
+		return AUDIO_S16MSB;
+	}
+
+	return -12345;
 }
 
 int max_len = 0;
@@ -551,10 +609,11 @@ void output_audio_frame(AVFrame *frame)
 	int gotten = cvt.len_cvt;
 #endif
 	//printf("Gotten %d\n", gotten);
-	uint32_t bytes_per_sec = (uint32_t)(obtained.freq*obtained.channels*obtained_data_size);
+	uint32_t bytes_per_sec = (uint32_t)(obtained.rate*obtained.pchan*obtained_data_size);
 	uint32_t target_samples = (uint32_t)(0.15*bytes_per_sec);
 	for (;;) {
-		uint32_t inqueue = (uint32_t)SDL_GetQueuedAudioSize(audid);
+		uint32_t inqueue = target_samples + 1;
+		//uint32_t inqueue = (uint32_t)SDL_GetQueuedAudioSize(audid);
 		if (inqueue <= target_samples) {
 			break;
 		}
@@ -584,10 +643,13 @@ void output_audio_frame(AVFrame *frame)
 					}
 				}
 			}
+#if 0
 			inqueue = (uint32_t)SDL_GetQueuedAudioSize(audid);
 			if (inqueue > target_samples) {
 				usleep((useconds_t)((inqueue - target_samples)*1e6/bytes_per_sec));
 			}
+#endif
+			break;
 		}
 	}
 #if 0
@@ -595,12 +657,20 @@ void output_audio_frame(AVFrame *frame)
 		usleep(10000);
 	}
 #endif
+	ret = sio_write(hdl, buf, gotten);
+	if (ret == 0) {
+		fprintf(stderr, "Cannot queue data to SIO audio output\n");
+		handler_impl();
+		exit(1);
+	}
+#if 0
 	ret = SDL_QueueAudio(audid, buf, gotten);
 	if (ret != 0) {
 		fprintf(stderr, "Cannot queue data to SDL audio output\n");
 		handler_impl();
 		exit(1);
 	}
+#endif
 }
 
 int print_prefix = 1;
@@ -2702,6 +2772,27 @@ int main(int argc, char **argv)
 		exit(0);
 	}
 	//printf("Rate %d\n", adecctx->sample_rate);
+	struct sio_par desired;
+	sio_initpar(&desired);
+	desired.bits = 16;
+	desired.bps = SIO_BPS(16);
+	desired.sig = 1;
+	desired.le = SIO_LE_NATIVE;
+	desired.msb = 1;
+	desired.rate = adecctx->sample_rate;
+	desired.pchan = 2;
+	hdl = sio_open(SIO_DEVANY, SIO_PLAY, 0);
+	if (hdl == NULL) {
+		fprintf(stderr, "Can't open SIO audio\n");
+		handler_impl();
+		exit(1);
+	}
+	if (!sio_setpar(hdl, &desired) || !sio_getpar(hdl, &obtained)) {
+		fprintf(stderr, "Can't set SIO parameters\n");
+		handler_impl();
+		exit(1);
+	}
+#if 0
 	SDL_AudioSpec desired;
 	desired.freq = adecctx->sample_rate;
 	desired.format = AUDIO_F32;
@@ -2718,18 +2809,19 @@ int main(int argc, char **argv)
 		handler_impl();
 		exit(1);
 	}
-#if SDL_MAJOR_VERSION > 2 || (SDL_MAJOR_VERSION == 2 && SDL_MINOR_VERSION > 0) || (SDL_MAJOR_VERSION == 2 && SDL_MINOR_VERSION == 0 && SDL_PATCHLEVEL >= 7)
-	sdl_stream = SDL_NewAudioStream(audio_format_as_sdl, chcount > 2 ? 2 : chcount, adecctx->sample_rate, obtained.format, obtained.channels, obtained.freq);
-#else
-	SDL_BuildAudioCVT(&cvt, audio_format_as_sdl, chcount > 2 ? 2 : chcount, adecctx->sample_rate, obtained.format, obtained.channels, obtained.freq);
 #endif
-	if (obtained.format == AUDIO_S32 || obtained.format == AUDIO_S32LSB || obtained.format == AUDIO_S32MSB || obtained.format == AUDIO_S32SYS || obtained.format == AUDIO_F32 || obtained.format == AUDIO_F32LSB || obtained.format == AUDIO_F32MSB || obtained.format == AUDIO_F32SYS) {
+#if SDL_MAJOR_VERSION > 2 || (SDL_MAJOR_VERSION == 2 && SDL_MINOR_VERSION > 0) || (SDL_MAJOR_VERSION == 2 && SDL_MINOR_VERSION == 0 && SDL_PATCHLEVEL >= 7)
+	sdl_stream = SDL_NewAudioStream(audio_format_as_sdl, chcount > 2 ? 2 : chcount, adecctx->sample_rate, sdl_format_from_sio_par(&obtained), obtained.pchan, obtained.rate);
+#else
+	SDL_BuildAudioCVT(&cvt, audio_format_as_sdl, chcount > 2 ? 2 : chcount, adecctx->sample_rate, sdl_format_from_sio_par(&obtained), obtained.pchan, obtained.rate);
+#endif
+	if (sdl_format_from_sio_par(&obtained) == AUDIO_S32 || sdl_format_from_sio_par(&obtained) == AUDIO_S32LSB || sdl_format_from_sio_par(&obtained) == AUDIO_S32MSB || sdl_format_from_sio_par(&obtained) == AUDIO_S32SYS || sdl_format_from_sio_par(&obtained) == AUDIO_F32 || sdl_format_from_sio_par(&obtained) == AUDIO_F32LSB || sdl_format_from_sio_par(&obtained) == AUDIO_F32MSB || sdl_format_from_sio_par(&obtained) == AUDIO_F32SYS) {
 		obtained_data_size = 4;
 	}
-	else if (obtained.format == AUDIO_S16 || obtained.format == AUDIO_S16LSB || obtained.format == AUDIO_S16MSB || obtained.format == AUDIO_S16SYS || obtained.format == AUDIO_U16 || obtained.format == AUDIO_U16LSB || obtained.format == AUDIO_U16MSB || obtained.format == AUDIO_U16SYS) {
+	else if (sdl_format_from_sio_par(&obtained) == AUDIO_S16 || sdl_format_from_sio_par(&obtained) == AUDIO_S16LSB || sdl_format_from_sio_par(&obtained) == AUDIO_S16MSB || sdl_format_from_sio_par(&obtained) == AUDIO_S16SYS || sdl_format_from_sio_par(&obtained) == AUDIO_U16 || sdl_format_from_sio_par(&obtained) == AUDIO_U16LSB || sdl_format_from_sio_par(&obtained) == AUDIO_U16MSB || sdl_format_from_sio_par(&obtained) == AUDIO_U16SYS) {
 		obtained_data_size = 2;
 	}
-	else if (obtained.format == AUDIO_U8 || obtained.format == AUDIO_S8) {
+	else if (sdl_format_from_sio_par(&obtained) == AUDIO_U8 || sdl_format_from_sio_par(&obtained) == AUDIO_S8) {
 		obtained_data_size = 1;
 	}
 	else {
@@ -2762,7 +2854,12 @@ int main(int argc, char **argv)
 	}
 	av_init_packet(packet);
 #endif
-	SDL_PauseAudioDevice(audid, 0);
+	if (!sio_start(hdl)) {
+		fprintf(stderr, "Can't start SIO audio stream\n");
+		handler_impl();
+		exit(1);
+	}
+	//SDL_PauseAudioDevice(audid, 0);
 	struct termios term;
 	tcgetattr(fileno(stdin), &term);
 	term.c_lflag &= ~ECHO;
@@ -2859,7 +2956,11 @@ int main(int argc, char **argv)
 #endif
 #endif
 			avformat_seek_file(avfctx, aidx, INT64_MIN, ts, INT64_MAX, 0);
-			SDL_ClearQueuedAudio(audid);
+#ifdef RECENT_SNDIO
+			sio_flush(hdl);
+			sio_start(hdl);
+#endif
+			//SDL_ClearQueuedAudio(audid);
 			seeks = 0;
 		}
 		if (ret < 0) {
@@ -2871,10 +2972,15 @@ int main(int argc, char **argv)
 		ret = avcodec_send_packet(adecctx, NULL);
 	}
 #endif
-	bytes_per_sec = (uint32_t)(obtained.freq*obtained.channels*obtained_data_size);
+
+#if 0
+	bytes_per_sec = (uint32_t)(obtained.rate*obtained.pchan*obtained_data_size);
 	while ((inqueue = (uint32_t)SDL_GetQueuedAudioSize(audid)) > 0) {
 		usleep((useconds_t)(inqueue*0.9e6/bytes_per_sec)+300);
 	}
+#endif
+
+	sio_close(hdl);
 	handler_impl();
 	return 0;
 }
