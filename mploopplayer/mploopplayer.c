@@ -2766,7 +2766,17 @@ int main(int argc, char **argv)
 	//printf("Rate %d\n", adecctx->sample_rate);
 	desired.channels = chcount > 2 ? 2 : chcount; // FIXME
 	desired.rate = adecctx->sample_rate;
-	dev = sndout_open_sdl2(&desired, &obtained);
+	// $XDG_RUNTIME_DIR/pulse/native is a socket if pulseaudio is used
+	// except $PULSE_SERVER if set, that socket is used instead
+	dev = sndout_open_pulsesimple(&desired, &obtained);
+	if (!dev)
+	{
+		dev = sndout_open_sndio(&desired, &obtained);
+	}
+	if (!dev)
+	{
+		dev = sndout_open_sdl2(&desired, &obtained);
+	}
 	if (!dev)
 	{
 		fprintf(stderr, "Can't open audio device\n");
