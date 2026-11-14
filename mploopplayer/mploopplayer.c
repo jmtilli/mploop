@@ -3,7 +3,7 @@
 #include <termios.h>
 #include <signal.h>
 #include <math.h>
-#include <SDL.h>
+#include <ctype.h>
 #include <libavutil/frame.h>
 #include <libavutil/mem.h>
 #include <libavutil/timestamp.h>
@@ -20,33 +20,29 @@
 #include <unistd.h>
 #include <poll.h>
 #include <fcntl.h>
-#include <sndio.h>
 #include <samplerate.h>
+#include "sndout.h"
 
 #undef RECENT_SNDIO
 
-struct sio_hdl *hdl;
+struct sndout_device *dev;
+struct sndout_settings desired;
+struct sndout_settings obtained;
+SRC_STATE *src_state;
+float src_ratio = 1.0;
 
 int leftidx = -1;
 int rightidx = -1;
-SDL_AudioDeviceID audid;
-//SDL_AudioSpec obtained;
-struct sio_par obtained;
 AVCodecContext *adecctx;
-#if SDL_MAJOR_VERSION > 2 || (SDL_MAJOR_VERSION == 2 && SDL_MINOR_VERSION > 0) || (SDL_MAJOR_VERSION == 2 && SDL_MINOR_VERSION == 0 && SDL_PATCHLEVEL >= 7)
-SDL_AudioStream *sdl_stream;
-#else
-SDL_AudioCVT cvt;
-#endif
 int audio_frame_count;
 int chcount;
 int data_size;
 int obtained_data_size;
-char buf[1048576];
+float buf[1048576/4];
 int bufloc;
 int nonplanar = 0;
 float duration;
-int audio_format_as_sdl = -12345;
+int audio_format_is_float = -12345;
 char volfilebuf[PATH_MAX+1];
 const char *volfile = NULL;
 AVFormatContext *avfctx = NULL;
@@ -70,58 +66,6 @@ void handler(int signum)
 	(void)signum;
 	handler_impl();
 	exit(0);
-}
-
-static inline int sdl_format_from_sio_par(const struct sio_par *sio_par)
-{
-	if (sio_par->bps == 4 && sio_par->bits == 32 && sio_par->sig == 1 && sio_par->le == SIO_LE_NATIVE && sio_par->msb)
-	{
-		return AUDIO_S32SYS;
-	}
-	if (sio_par->bps == 2 && sio_par->bits == 16 && sio_par->sig == 0 && sio_par->le == SIO_LE_NATIVE && sio_par->msb)
-	{
-		return AUDIO_U16SYS;
-	}
-	if (sio_par->bps == 2 && sio_par->bits == 16 && sio_par->sig == 1 && sio_par->le == SIO_LE_NATIVE && sio_par->msb)
-	{
-		return AUDIO_S16SYS;
-	}
-	if (sio_par->bps == 1 && sio_par->bits == 8 && sio_par->sig == 0)
-	{
-		return AUDIO_U8;
-	}
-	if (sio_par->bps == 1 && sio_par->bits == 8 && sio_par->sig == 1)
-	{
-		return AUDIO_S8;
-	}
-
-	if (sio_par->bps == 4 && sio_par->bits == 32 && sio_par->sig == 1 && sio_par->le && sio_par->msb)
-	{
-		return AUDIO_S32LSB;
-	}
-	if (sio_par->bps == 2 && sio_par->bits == 16 && sio_par->sig == 0 && sio_par->le && sio_par->msb)
-	{
-		return AUDIO_U16LSB;
-	}
-	if (sio_par->bps == 2 && sio_par->bits == 16 && sio_par->sig == 1 && sio_par->le && sio_par->msb)
-	{
-		return AUDIO_S16LSB;
-	}
-
-	if (sio_par->bps == 4 && sio_par->bits == 32 && sio_par->sig == 1 && sio_par->le == 0 && sio_par->msb)
-	{
-		return AUDIO_S32MSB;
-	}
-	if (sio_par->bps == 2 && sio_par->bits == 16 && sio_par->sig == 0 && sio_par->le == 0 && sio_par->msb)
-	{
-		return AUDIO_U16MSB;
-	}
-	if (sio_par->bps == 2 && sio_par->bits == 16 && sio_par->sig == 1 && sio_par->le == 0 && sio_par->msb)
-	{
-		return AUDIO_S16MSB;
-	}
-
-	return -12345;
 }
 
 int max_len = 0;
@@ -377,39 +321,39 @@ static inline float for_every_sample(float x)
 	}
 	return res;
 }
-static inline int32_t for_every_sample32(int32_t x)
+static inline float for_every_sample32(int32_t x)
 {
 	float res = ((float)x) * volume_mul;
 	if (res >= (float)INT32_MAX) {
-		return INT32_MAX;
+		return 1.0;
 	}
 	else if (res <= (float)INT32_MIN) {
-		return INT32_MIN;
+		return -1.0;
 	}
-	return ((int32_t)res);
+	return ((float)res)/(INT32_MAX+1.0);
 }
-static inline int16_t for_every_sample16(int16_t x)
+static inline float for_every_sample16(int16_t x)
 {
 	float res = ((float)x) * volume_mul;
 	if (res >= (float)INT16_MAX) {
-		return INT16_MAX;
+		return 1.0;
 	}
 	else if (res <= (float)INT16_MIN) {
-		return INT16_MIN;
+		return -1.0;
 	}
-	return ((int16_t)res);
+	return res/32768.0;
 }
-static inline uint8_t for_every_sample8(uint8_t x)
+static inline float for_every_sample8(uint8_t x)
 {
 	float res = x-128; // range: -128 to 127
 	res *= volume_mul;
 	if (res >= 127) {
-		return 127 + 128;
+		return 1.0;
 	}
 	if (res <= -128) {
-		return -128 + 128;
+		return -1.0;
 	}
-	return (uint8_t)(res + 128);
+	return (res + 128.0)/128.0;
 }
 
 void handle_chars(int ch)
@@ -469,11 +413,15 @@ void handle_chars(int ch)
 	}
 }
 
+long buffered_frames = 0;
+float out_float[1048576*4];
+
 void output_audio_frame(AVFrame *frame)
 {
 	int i;
 	int chid;
 	int chmap[2] = {leftidx, rightidx};
+	SRC_DATA src_data = {};
 #if 0
 	size_t unpadded_linesize = frame->nb_samples * av_get_bytes_per_sample(frame->format);
 #endif
@@ -486,11 +434,11 @@ void output_audio_frame(AVFrame *frame)
 #endif
 	print_status("[V: %.1f] A: %.1f / %.1f", volume_db, mytime, duration);
 	fflush(stdout);
-	bufloc = 0;
+	bufloc = buffered_frames;
 	for (i = 0; i < frame->nb_samples; i++) {
 		for (chid = 0; chid < (chcount>2 ? 2 : chcount); chid++) {
 			int ch = chmap[chid];
-			if (bufloc + data_size > (int)sizeof(buf)) {
+			if (bufloc + 1 > (int)sizeof(buf)) {
 				fprintf(stderr, "Buffer size insufficient, very strange audio file\n");
 				handler_impl();
 				exit(1);
@@ -499,126 +447,86 @@ void output_audio_frame(AVFrame *frame)
 				if (data_size == 1) {
 					uint8_t x;
 					memcpy(&x, frame->data[0] + data_size*(i*chcount+ch), 1);
-					x = for_every_sample8(x);
-					memcpy(&buf[bufloc], &x, 1);
-					bufloc += 1;
+					buf[bufloc++] = for_every_sample8(x);
 				}
 				if (data_size == 2) {
 					int16_t x;
 					memcpy(&x, frame->data[0] + data_size*(i*chcount+ch), 2);
-					x = for_every_sample16(x);
-					memcpy(&buf[bufloc], &x, 2);
-					bufloc += 2;
+					buf[bufloc++] = for_every_sample16(x);
 				}
-				if (data_size == 4 && audio_format_as_sdl == AUDIO_F32SYS) {
+				if (data_size == 4 && audio_format_is_float) {
 					float x;
 					memcpy(&x, frame->data[0] + data_size*(i*chcount+ch), 4);
-					x = for_every_sample(x);
-					memcpy(&buf[bufloc], &x, 4);
-					bufloc += 4;
+					buf[bufloc++] = for_every_sample(x);
 				}
 				else if (data_size == 4) {
 					int32_t x;
 					memcpy(&x, frame->data[0] + data_size*(i*chcount+ch), 4);
-					x = for_every_sample32(x);
-					memcpy(&buf[bufloc], &x, 4);
-					bufloc += 4;
+					buf[bufloc++] = for_every_sample32(x);
 				}
-				if (data_size == 8 && audio_format_as_sdl == AUDIO_F32SYS) {
+				if (data_size == 8 && audio_format_is_float) {
 					double x;
 					float xf;
 					memcpy(&x, frame->data[0] + data_size*(i*chcount+ch), 8);
 					xf = (float)x;
-					xf = for_every_sample(xf);
-					memcpy(&buf[bufloc], &xf, 4);
-					bufloc += 4;
+					buf[bufloc++] = for_every_sample(xf);
 				}
 				else if (data_size == 8) {
 					int64_t x;
 					int32_t x32;
 					memcpy(&x, frame->data[0] + data_size*(i*chcount+ch), 8);
 					x32 = x>>32;
-					x32 = for_every_sample32(x32);
-					memcpy(&buf[bufloc], &x32, 4);
-					bufloc += 4;
+					buf[bufloc++] = for_every_sample32(x32);
 				}
 			} else {
 				if (data_size == 1) {
 					uint8_t x;
 					memcpy(&x, frame->data[ch] + data_size*i, 1);
-					x = for_every_sample8(x);
-					memcpy(&buf[bufloc], &x, 1);
-					bufloc += 1;
+					buf[bufloc++] = for_every_sample8(x);
 				}
 				if (data_size == 2) {
 					int16_t x;
 					memcpy(&x, frame->data[ch] + data_size*i, 2);
-					x = for_every_sample16(x);
-					memcpy(&buf[bufloc], &x, 2);
-					bufloc += 2;
+					buf[bufloc++] = for_every_sample16(x);
 				}
-				if (data_size == 4 && audio_format_as_sdl == AUDIO_F32SYS) {
+				if (data_size == 4 && audio_format_is_float) {
 					float x;
 					memcpy(&x, frame->data[ch] + data_size*i, 4);
-					x = for_every_sample(x);
-					memcpy(&buf[bufloc], &x, 4);
-					bufloc += 4;
+					buf[bufloc++] = for_every_sample(x);
 				}
 				else if (data_size == 4) {
 					int32_t x;
 					memcpy(&x, frame->data[ch] + data_size*i, 4);
-					x = for_every_sample32(x);
-					memcpy(&buf[bufloc], &x, 4);
-					bufloc += 4;
+					buf[bufloc++] = for_every_sample32(x);
 				}
-				if (data_size == 8 && audio_format_as_sdl == AUDIO_F32SYS) {
+				if (data_size == 8 && audio_format_is_float) {
 					double x;
 					float xf;
 					memcpy(&x, frame->data[ch] + data_size*i, 8);
 					xf = (float)x;
-					xf = for_every_sample(xf);
-					memcpy(&buf[bufloc], &xf, 4);
-					bufloc += 4;
+					buf[bufloc++] = for_every_sample(xf);
 				}
 				else if (data_size == 8) {
 					int64_t x;
 					int32_t x32;
 					memcpy(&x, frame->data[ch] + data_size*i, 8);
 					x32 = x>>32;
-					x32 = for_every_sample32(x32);
-					memcpy(&buf[bufloc], &x32, 4);
-					bufloc += 4;
+					buf[bufloc++] = for_every_sample32(x32);
 				}
 			}
 		}
 	}
-	//printf("Bufloc %d\n", bufloc);
-#if SDL_MAJOR_VERSION > 2 || (SDL_MAJOR_VERSION == 2 && SDL_MINOR_VERSION > 0) || (SDL_MAJOR_VERSION == 2 && SDL_MINOR_VERSION == 0 && SDL_PATCHLEVEL >= 7)
-	int ret = SDL_AudioStreamPut(sdl_stream, buf, bufloc);
-	if (ret < 0) {
-		fprintf(stderr, "Cannot put data to SDL audio stream\n");
-		handler_impl();
-		exit(1);
-	}
-	//int avail = SDL_AudioStreamAvailable(sdl_stream);
-	int gotten = SDL_AudioStreamGet(sdl_stream, buf, sizeof(buf));
-#else
-	int ret;
-	cvt.len = bufloc;
-	cvt.buf = (uint8_t*)buf;
-	SDL_ConvertAudio(&cvt);
-	int gotten = cvt.len_cvt;
-#endif
-	//printf("Gotten %d\n", gotten);
-	uint32_t bytes_per_sec = (uint32_t)(obtained.rate*obtained.pchan*obtained_data_size);
-	uint32_t target_samples = (uint32_t)(0.15*bytes_per_sec);
-	for (;;) {
-		uint32_t inqueue = target_samples + 1;
-		//uint32_t inqueue = (uint32_t)SDL_GetQueuedAudioSize(audid);
-		if (inqueue <= target_samples) {
-			break;
-		}
-		else {
+	for (;;)
+	{
+		src_data.data_in = buf;
+		src_data.data_out = out_float;
+		src_data.output_frames = sizeof(out_float)/(chcount>2 ? 2 : chcount);
+		src_data.input_frames = bufloc/(chcount>2 ? 2 : chcount);
+		src_data.end_of_input = 0;
+		src_data.src_ratio = src_ratio;
+		src_process(src_state, &src_data);
+		if (src_data.output_frames_gen > 0)
+		{
 			int ch;
 			while ((ch = read_char()) != '\0') {
 				handle_chars(ch);
@@ -644,34 +552,18 @@ void output_audio_frame(AVFrame *frame)
 					}
 				}
 			}
-#if 0
-			inqueue = (uint32_t)SDL_GetQueuedAudioSize(audid);
-			if (inqueue > target_samples) {
-				usleep((useconds_t)((inqueue - target_samples)*1e6/bytes_per_sec));
-			}
-#endif
+			snd_out_block(dev);
+			snd_out(dev, out_float, src_data.output_frames_gen);
+		}
+		//printf("Input frames %d, output frames gen %d, input frames used %d\n", (int)src_data.input_frames, (int)src_data.output_frames_gen, (int)src_data.input_frames_used);
+		memmove(&buf[0], &buf[src_data.input_frames_used*(chcount>2 ? 2 : chcount)], bufloc/(chcount>2 ? 2 : chcount) - src_data.input_frames_used);
+		buffered_frames = (bufloc/(chcount>2 ? 2 : chcount) - src_data.input_frames_used) * (chcount>2 ? 2 : chcount);
+		bufloc = buffered_frames;
+		if (src_data.output_frames_gen < src_data.output_frames || src_data.input_frames_used == 0)
+		{
 			break;
 		}
 	}
-#if 0
-	while ((uint32_t)SDL_GetQueuedAudioSize(audid) > (uint32_t)(0.15*obtained.freq*obtained.channels*obtained_data_size)) {
-		usleep(10000);
-	}
-#endif
-	ret = sio_write(hdl, buf, gotten);
-	if (ret == 0) {
-		fprintf(stderr, "Cannot queue data to SIO audio output\n");
-		handler_impl();
-		exit(1);
-	}
-#if 0
-	ret = SDL_QueueAudio(audid, buf, gotten);
-	if (ret != 0) {
-		fprintf(stderr, "Cannot queue data to SDL audio output\n");
-		handler_impl();
-		exit(1);
-	}
-#endif
 }
 
 int print_prefix = 1;
@@ -2341,7 +2233,6 @@ int main(int argc, char **argv)
 	}
 	snprintf(fnamebuf, fnamebuflen, urlmode ? "%s" : "file:%s", argv[optind]);
 
-	SDL_Init(SDL_INIT_AUDIO);
 #if LIBAVFORMAT_VERSION_MAJOR > 58 || (LIBAVFORMAT_VERSION_MAJOR == 58 && LIBAVFORMAT_VERSION_MINOR >= 9)
 #else
 	av_register_all();
@@ -2460,11 +2351,11 @@ int main(int argc, char **argv)
 		}
 		vkey = mangle_vorbiskey(vkey, &colon);
 		if (*vkey) {
-			printf("%c", toupper(*vkey));
+			printf("%c", toupper((unsigned char)*vkey));
 			vkey++;
 		}
 		while (*vkey) {
-			printf("%c", tolower(*vkey));
+			printf("%c", tolower((unsigned char)*vkey));
 			vkey++;
 		}
 		if (colon) {
@@ -2488,11 +2379,11 @@ int main(int argc, char **argv)
 		}
 		vkey = mangle_vorbiskey(vkey, &colon);
 		if (*vkey) {
-			printf("%c", toupper(*vkey));
+			printf("%c", toupper((unsigned char)*vkey));
 			vkey++;
 		}
 		while (*vkey) {
-			printf("%c", tolower(*vkey));
+			printf("%c", tolower((unsigned char)*vkey));
 			vkey++;
 		}
 		if (colon) {
@@ -2511,11 +2402,11 @@ int main(int argc, char **argv)
 		}
 		vkey = mangle_vorbiskey(cur->key, &colon);
 		if (*vkey) {
-			printf("%c", toupper(*vkey));
+			printf("%c", toupper((unsigned char)*vkey));
 			vkey++;
 		}
 		while (*vkey) {
-			printf("%c", tolower(*vkey));
+			printf("%c", tolower((unsigned char)*vkey));
 			vkey++;
 		}
 		if (colon) {
@@ -2708,19 +2599,19 @@ int main(int argc, char **argv)
 		if (adecctx->sample_fmt == AV_SAMPLE_FMT_DBL) {
 			//printf("nonplanar\n");
 			nonplanar = 1;
-			audio_format_as_sdl = AUDIO_F32SYS;
+			audio_format_is_float = 1;
 		}
 		else if (adecctx->sample_fmt == AV_SAMPLE_FMT_DBLP) {
-			audio_format_as_sdl = AUDIO_F32SYS;
+			audio_format_is_float = 1;
 		}
 #if LIBAVUTIL_VERSION_MAJOR > 55 || (LIBAVUTIL_VERSION_MAJOR == 55 && LIBAVUTIL_VERSION_MINOR >= 21)
 		else if (adecctx->sample_fmt == AV_SAMPLE_FMT_S64) {
 			//printf("nonplanar\n");
 			nonplanar = 1;
-			audio_format_as_sdl = AUDIO_S32SYS;
+			audio_format_is_float = 0;
 		}
 		else if (adecctx->sample_fmt == AV_SAMPLE_FMT_S64P) {
-			audio_format_as_sdl = AUDIO_S32SYS;
+			audio_format_is_float = 0;
 		}
 #endif
 	}
@@ -2728,40 +2619,40 @@ int main(int argc, char **argv)
 		if (adecctx->sample_fmt == AV_SAMPLE_FMT_FLT) {
 			//printf("nonplanar\n");
 			nonplanar = 1;
-			audio_format_as_sdl = AUDIO_F32SYS;
+			audio_format_is_float = 1;
 		}
 		else if (adecctx->sample_fmt == AV_SAMPLE_FMT_FLTP) {
-			audio_format_as_sdl = AUDIO_F32SYS;
+			audio_format_is_float = 1;
 		}
 		else if (adecctx->sample_fmt == AV_SAMPLE_FMT_S32) {
 			//printf("nonplanar\n");
 			nonplanar = 1;
-			audio_format_as_sdl = AUDIO_S32SYS;
+			audio_format_is_float = 0;
 		}
 		else if (adecctx->sample_fmt == AV_SAMPLE_FMT_S32P) {
-			audio_format_as_sdl = AUDIO_S32SYS;
+			audio_format_is_float = 0;
 		}
 	}
 	else if (data_size == 2) {
 		if (adecctx->sample_fmt == AV_SAMPLE_FMT_S16) {
 			//printf("nonplanar\n");
 			nonplanar = 1;
-			audio_format_as_sdl = AUDIO_S16SYS;
+			audio_format_is_float = 0;
 		}
 		else if (adecctx->sample_fmt == AV_SAMPLE_FMT_S16P) {
-			audio_format_as_sdl = AUDIO_S16SYS;
+			audio_format_is_float = 0;
 		}
 	}
 	else if (data_size == 1) {
 		if (adecctx->sample_fmt == AV_SAMPLE_FMT_U8) {
 			//printf("nonplanar\n");
-			audio_format_as_sdl = AUDIO_U8;
+			audio_format_is_float = 0;
 		}
 		else if (adecctx->sample_fmt == AV_SAMPLE_FMT_U8P) {
-			audio_format_as_sdl = AUDIO_U8;
+			audio_format_is_float = 0;
 		}
 	}
-	if (audio_format_as_sdl == -12345) {
+	if (audio_format_is_float == -12345) {
 		fprintf(stderr, "Unknown audio format given by decoder\n");
 		handler_impl();
 		exit(1);
@@ -2773,60 +2664,22 @@ int main(int argc, char **argv)
 		exit(0);
 	}
 	//printf("Rate %d\n", adecctx->sample_rate);
-	struct sio_par desired;
-	sio_initpar(&desired);
-	desired.bits = 16;
-	desired.bps = SIO_BPS(16);
-	desired.sig = 1;
-	desired.le = SIO_LE_NATIVE;
-	desired.msb = 1;
+	desired.channels = chcount > 2 ? 2 : chcount; // FIXME
 	desired.rate = adecctx->sample_rate;
-	desired.pchan = 2;
-	hdl = sio_open(SIO_DEVANY, SIO_PLAY, 0);
-	if (hdl == NULL) {
-		fprintf(stderr, "Can't open SIO audio\n");
+	dev = sndout_open_sdl2(&desired, &obtained);
+	if (!dev)
+	{
+		fprintf(stderr, "Can't open audio device\n");
 		handler_impl();
 		exit(1);
 	}
-	if (!sio_setpar(hdl, &desired) || !sio_getpar(hdl, &obtained)) {
-		fprintf(stderr, "Can't set SIO parameters\n");
-		handler_impl();
-		exit(1);
-	}
-#if 0
-	SDL_AudioSpec desired;
-	desired.freq = adecctx->sample_rate;
-	desired.format = AUDIO_F32;
-	desired.channels = 2;
-	desired.samples = 4096;
-	desired.callback = NULL;
-	desired.userdata = NULL;
-	//const char *name = SDL_GetAudioDeviceName(1,0);
-	//const char *name = SDL_GetAudioDeviceName(0,0);
-	const char *name = NULL;
-	audid = SDL_OpenAudioDevice(name, 0, &desired, &obtained, SDL_AUDIO_ALLOW_ANY_CHANGE);
-	if (audid <= 0) {
-		fprintf(stderr, "Cannot open SDL audio\n");
-		handler_impl();
-		exit(1);
-	}
-#endif
-#if SDL_MAJOR_VERSION > 2 || (SDL_MAJOR_VERSION == 2 && SDL_MINOR_VERSION > 0) || (SDL_MAJOR_VERSION == 2 && SDL_MINOR_VERSION == 0 && SDL_PATCHLEVEL >= 7)
-	sdl_stream = SDL_NewAudioStream(audio_format_as_sdl, chcount > 2 ? 2 : chcount, adecctx->sample_rate, sdl_format_from_sio_par(&obtained), obtained.pchan, obtained.rate);
-#else
-	SDL_BuildAudioCVT(&cvt, audio_format_as_sdl, chcount > 2 ? 2 : chcount, adecctx->sample_rate, sdl_format_from_sio_par(&obtained), obtained.pchan, obtained.rate);
-#endif
-	if (sdl_format_from_sio_par(&obtained) == AUDIO_S32 || sdl_format_from_sio_par(&obtained) == AUDIO_S32LSB || sdl_format_from_sio_par(&obtained) == AUDIO_S32MSB || sdl_format_from_sio_par(&obtained) == AUDIO_S32SYS || sdl_format_from_sio_par(&obtained) == AUDIO_F32 || sdl_format_from_sio_par(&obtained) == AUDIO_F32LSB || sdl_format_from_sio_par(&obtained) == AUDIO_F32MSB || sdl_format_from_sio_par(&obtained) == AUDIO_F32SYS) {
-		obtained_data_size = 4;
-	}
-	else if (sdl_format_from_sio_par(&obtained) == AUDIO_S16 || sdl_format_from_sio_par(&obtained) == AUDIO_S16LSB || sdl_format_from_sio_par(&obtained) == AUDIO_S16MSB || sdl_format_from_sio_par(&obtained) == AUDIO_S16SYS || sdl_format_from_sio_par(&obtained) == AUDIO_U16 || sdl_format_from_sio_par(&obtained) == AUDIO_U16LSB || sdl_format_from_sio_par(&obtained) == AUDIO_U16MSB || sdl_format_from_sio_par(&obtained) == AUDIO_U16SYS) {
-		obtained_data_size = 2;
-	}
-	else if (sdl_format_from_sio_par(&obtained) == AUDIO_U8 || sdl_format_from_sio_par(&obtained) == AUDIO_S8) {
-		obtained_data_size = 1;
-	}
-	else {
-		fprintf(stderr, "Unknown format obtained for SDL audio devicen");
+	obtained_data_size = 4;
+	src_ratio = ((float)obtained.rate)/((float)desired.rate);
+	int error = 0;
+	src_state = src_new(SRC_SINC_MEDIUM_QUALITY, obtained.channels, &error);
+	if (!src_state)
+	{
+		fprintf(stderr, "Can't open resampler\n");
 		handler_impl();
 		exit(1);
 	}
@@ -2855,12 +2708,7 @@ int main(int argc, char **argv)
 	}
 	av_init_packet(packet);
 #endif
-	if (!sio_start(hdl)) {
-		fprintf(stderr, "Can't start SIO audio stream\n");
-		handler_impl();
-		exit(1);
-	}
-	//SDL_PauseAudioDevice(audid, 0);
+	snd_out_unpause(dev);
 	struct termios term;
 	tcgetattr(fileno(stdin), &term);
 	term.c_lflag &= ~ECHO;
@@ -2957,11 +2805,8 @@ int main(int argc, char **argv)
 #endif
 #endif
 			avformat_seek_file(avfctx, aidx, INT64_MIN, ts, INT64_MAX, 0);
-#ifdef RECENT_SNDIO
-			sio_flush(hdl);
-			sio_start(hdl);
-#endif
-			//SDL_ClearQueuedAudio(audid);
+			snd_out_discardflush(dev);
+			snd_out_unpause(dev);
 			seeks = 0;
 		}
 		if (ret < 0) {
@@ -2981,7 +2826,8 @@ int main(int argc, char **argv)
 	}
 #endif
 
-	sio_close(hdl);
+	snd_out_closeflush(dev);
+	snd_out_close(dev);
 	handler_impl();
 	return 0;
 }

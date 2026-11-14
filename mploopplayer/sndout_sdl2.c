@@ -35,7 +35,6 @@ struct sndout_device_sdl2 {
 	int obtained_le;
 	int obtained_sig;
 	int obtained_msb;
-	int obtained_data_size;
 	int obtained_is_float;
 	SDL_AudioDeviceID audid;
 };
@@ -54,7 +53,7 @@ int snd_out_sdl2_always_block(struct sndout_device *dev)
 void snd_out_sdl2_block(struct sndout_device *dev)
 {
 	struct sndout_device_sdl2 *sdl2 = dev->userdata;
-	uint32_t bytes_per_sec = (uint32_t)(dev->obtained.rate*dev->obtained.channels*sdl2->obtained_data_size);
+	uint32_t bytes_per_sec = (uint32_t)(dev->obtained.rate*dev->obtained.channels*sdl2->obtained_bps);
 	uint32_t target_samples = (uint32_t)(0.15*bytes_per_sec);
 	for (;;)
 	{
@@ -87,7 +86,7 @@ void snd_out_sdl2_discardflush(struct sndout_device *dev)
 void snd_out_sdl2_closeflush(struct sndout_device *dev)
 {
 	struct sndout_device_sdl2 *sdl2 = dev->userdata;
-	uint32_t bytes_per_sec = (uint32_t)(dev->obtained.rate*dev->obtained.channels*sdl2->obtained_data_size);
+	uint32_t bytes_per_sec = (uint32_t)(dev->obtained.rate*dev->obtained.channels*sdl2->obtained_bps);
 	uint32_t inqueue;
 	while ((inqueue = (uint32_t)SDL_GetQueuedAudioSize(sdl2->audid)) > 0) {
 		usleep((useconds_t)(inqueue*0.9e6/bytes_per_sec)+300);
@@ -107,7 +106,7 @@ void snd_out_sdl2_out(struct sndout_device *dev, const float *samples, unsigned 
 	unsigned i;
 	if (sdl2->obtained_is_float)
 	{
-		if (sdl2->obtained_le == (SDL_BYTEORDER == SDL_BIG_ENDIAN))
+		if (sdl2->obtained_le == (SDL_BYTEORDER != SDL_BIG_ENDIAN))
 		{
 			SDL_QueueAudio(audid, samples, numsamplesall);
 		}
@@ -169,7 +168,7 @@ void snd_out_sdl2_out(struct sndout_device *dev, const float *samples, unsigned 
 	}
 	else if (sdl2->obtained_bits == 16 && sdl2->obtained_bps == 2)
 	{
-		if (sdl2->obtained_le == (SDL_BYTEORDER == SDL_BIG_ENDIAN))
+		if (sdl2->obtained_le == (SDL_BYTEORDER != SDL_BIG_ENDIAN))
 		{
 			if (sdl2->obtained_sig)
 			{
@@ -189,7 +188,7 @@ void snd_out_sdl2_out(struct sndout_device *dev, const float *samples, unsigned 
 						samples2[i] = 32767*samples[i];
 					}
 				}
-				SDL_QueueAudio(audid, samples2, numsamplesall);
+				SDL_QueueAudio(audid, samples2, numsamplesall*sizeof(int16_t));
 				free(samples2);
 			}
 			else
@@ -210,7 +209,7 @@ void snd_out_sdl2_out(struct sndout_device *dev, const float *samples, unsigned 
 						samples2[i] = 32767+32767*samples[i];
 					}
 				}
-				SDL_QueueAudio(audid, samples2, numsamplesall);
+				SDL_QueueAudio(audid, samples2, numsamplesall*sizeof(uint16_t));
 				free(samples2);
 			}
 		}
@@ -234,7 +233,7 @@ void snd_out_sdl2_out(struct sndout_device *dev, const float *samples, unsigned 
 						samples2[i] = bswap16(32767*samples[i]);
 					}
 				}
-				SDL_QueueAudio(audid, samples2, numsamplesall);
+				SDL_QueueAudio(audid, samples2, numsamplesall*sizeof(int16_t));
 				free(samples2);
 			}
 			else
@@ -255,14 +254,14 @@ void snd_out_sdl2_out(struct sndout_device *dev, const float *samples, unsigned 
 						samples2[i] = bswap16(32767+32767*samples[i]);
 					}
 				}
-				SDL_QueueAudio(audid, samples2, numsamplesall);
+				SDL_QueueAudio(audid, samples2, numsamplesall*sizeof(uint16_t));
 				free(samples2);
 			}
 		}
 	}
 	else if (sdl2->obtained_bits == 32 && sdl2->obtained_bps == 4)
 	{
-		if (sdl2->obtained_le == (SDL_BYTEORDER == SDL_BIG_ENDIAN))
+		if (sdl2->obtained_le == (SDL_BYTEORDER != SDL_BIG_ENDIAN))
 		{
 			if (sdl2->obtained_sig)
 			{
@@ -282,7 +281,7 @@ void snd_out_sdl2_out(struct sndout_device *dev, const float *samples, unsigned 
 						samples2[i] = 2147483647*samples[i];
 					}
 				}
-				SDL_QueueAudio(audid, samples2, numsamplesall);
+				SDL_QueueAudio(audid, samples2, numsamplesall*sizeof(int32_t));
 				free(samples2);
 			}
 			else
@@ -303,7 +302,7 @@ void snd_out_sdl2_out(struct sndout_device *dev, const float *samples, unsigned 
 						samples2[i] = 2147483647U+2147483647U*samples[i];
 					}
 				}
-				SDL_QueueAudio(audid, samples2, numsamplesall);
+				SDL_QueueAudio(audid, samples2, numsamplesall*sizeof(uint32_t));
 				free(samples2);
 			}
 		}
@@ -327,7 +326,7 @@ void snd_out_sdl2_out(struct sndout_device *dev, const float *samples, unsigned 
 						samples2[i] = bswap32(2147483647*samples[i]);
 					}
 				}
-				SDL_QueueAudio(audid, samples2, numsamplesall);
+				SDL_QueueAudio(audid, samples2, numsamplesall*sizeof(int32_t));
 				free(samples2);
 			}
 			else
@@ -348,7 +347,7 @@ void snd_out_sdl2_out(struct sndout_device *dev, const float *samples, unsigned 
 						samples2[i] = bswap32(2147483647U+2147483647U*samples[i]);
 					}
 				}
-				SDL_QueueAudio(audid, samples2, numsamplesall);
+				SDL_QueueAudio(audid, samples2, numsamplesall*sizeof(uint32_t));
 				free(samples2);
 			}
 		}
