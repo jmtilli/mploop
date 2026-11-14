@@ -1,1 +1,4 @@
 /mploopplayer
+*.o
+*.d
+/libmploopplayer.a

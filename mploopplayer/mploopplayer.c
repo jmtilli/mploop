@@ -21,6 +21,7 @@
 #include <poll.h>
 #include <fcntl.h>
 #include <sndio.h>
+#include <samplerate.h>
 
 #undef RECENT_SNDIO
 

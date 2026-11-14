@@ -1,20 +1,44 @@
 @subfile
 @strict
 
+$LDFLAGS ?= []
+
 $SDL2_CFLAGS ``= ["pkg-config", "sdl2", "--cflags"]
 $AVF_CFLAGS ``= ["pkg-config", "libavformat", "--cflags"]
 $AVU_CFLAGS ``= ["pkg-config", "libavutil", "--cflags"]
 $AVC_CFLAGS ``= ["pkg-config", "libavcodec", "--cflags"]
 $SIO_CFLAGS ``= ["sh", "-c", "pkg-config sndio --exists && pkg-config sndio --cflags || echo"]
+$PS_CFLAGS ``= ["pkg-config", "libpulse-simple", "--cflags"]
+$SRC_CFLAGS ``= ["pkg-config", "samplerate", "--cflags"]
 $SDL2_LIBS ``= ["pkg-config", "sdl2", "--libs"]
 $AVF_LIBS ``= ["pkg-config", "libavformat", "--libs"]
 $AVU_LIBS ``= ["pkg-config", "libavutil", "--libs"]
 $AVC_LIBS ``= ["pkg-config", "libavcodec", "--libs"]
 $SIO_LIBS ``= ["sh", "-c", "pkg-config sndio --exists && pkg-config sndio --libs || echo -lsndio"]
-$CFLAGS += [@$SDL2_CFLAGS, @$AVF_CFLAGS, @$AVU_CFLAGS, @$AVC_CFLAGS, @$SIO_CFLAGS]
-$LIBS = [@$SDL2_LIBS, @$AVF_LIBS, @$AVU_LIBS, @$AVC_LIBS, @$SIO_LIBS, "-lm"]
+$PS_LIBS ``= ["pkg-config", "libpulse-simple", "--libs"]
+$SRC_LIBS ``= ["pkg-config", "samplerate", "--libs"]
+$CFLAGS += [@$SDL2_CFLAGS, @$AVF_CFLAGS, @$AVU_CFLAGS, @$AVC_CFLAGS, @$SIO_CFLAGS, @$PS_CFLAGS, @$SRC_CFLAGS]
+$LIBS = [@$SDL2_LIBS, @$AVF_LIBS, @$AVU_LIBS, @$AVC_LIBS, @$SIO_LIBS, @$PS_LIBS, @$SRC_LIBS, "-lm"]
+
+$SRC_LIB = ["sndout.c", "sndout_sdl2.c", "sndout_sndio.c", "sndout_pulsesimple.c"]
+$SRC_PROG = ["mploopplayer.c"]
+$SRC = [@$SRC_LIB, @$SRC_PROG]
+$(DEP) = @sufsuball($(SRC), ".c", ".d")
+$(OBJ) = @sufsuball($(SRC), ".c", ".o")
+$(OBJ_LIB) = @sufsuball($(SRC_LIB), ".c", ".o")
+$(PROG) = @sufsuball($(SRC_PROG), ".c", "")
 
 @phonyrule: 'all': 'mploopplayer'
 
-@distrule: 'mploopplayer': 'mploopplayer.c'
-@	[$(CC), "-o", "mploopplayer", "mploopplayer.c", @$(CFLAGS), @$(LIBS)]
+@patrule @distrule: $(PROG): '%': '%.o' 'libmploopplayer.a'
+@	[@$(CC), @$(CFLAGS), @$(LDFLAGS), "-o", $@, $<, 'libmploopplayer.a', @$LIBS]
+
+@patrule: $(OBJ): '%.o': '%.c' '%.d'
+@	[@$(CC), @$(CFLAGS), "-c", "-o", $@, $<]
+
+@patrule: $(DEP): '%.d': '%.c'
+@	[@$(CC), @$(CFLAGS), "-MM", "-o", $@, $<]
+
+'libmploopplayer.a': $(OBJ_LIB)
+@	["rm", "-f", $@]
+@	[@$(AR), "rvs", $@, @@suffilter($^, ".o")]

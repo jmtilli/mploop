@@ -1,7 +1,8 @@
 @toplevel
 @strict
 
-$CC = "cc"
+$CC = ["cc"]
+$AR = ["ar"]
 $CFLAGS = ["-Wall", "-Wextra", "-O3"]
 
 @phonyrule: 'all': 'mploopplayer/all'
