@@ -420,6 +420,7 @@ void output_audio_frame(AVFrame *frame)
 {
 	int i;
 	int chid;
+	int outchcount = obtained.channels;
 	int chmap[2] = {leftidx, rightidx};
 	SRC_DATA src_data = {};
 #if 0
@@ -435,8 +436,107 @@ void output_audio_frame(AVFrame *frame)
 	print_status("[V: %.1f] A: %.1f / %.1f", volume_db, mytime, duration);
 	fflush(stdout);
 	bufloc = buffered_frames;
-	for (i = 0; i < frame->nb_samples; i++) {
-		for (chid = 0; chid < (chcount>2 ? 2 : chcount); chid++) {
+	if (outchcount == 1 && chcount == 2)
+	{
+		for (i = 0; i < frame->nb_samples; i++) {
+			int lch = chmap[0];
+			int rch = chmap[1];
+			if (bufloc + 1 > (int)(sizeof(buf)/sizeof(*buf))) {
+				fprintf(stderr, "Buffer size insufficient, very strange audio file\n");
+				handler_impl();
+				exit(1);
+			}
+			if (nonplanar) {
+				if (data_size == 1) {
+					uint8_t l,r;
+					memcpy(&l, frame->data[0] + data_size*(i*chcount+lch), 1);
+					memcpy(&r, frame->data[0] + data_size*(i*chcount+rch), 1);
+					buf[bufloc++] = (for_every_sample8(l)+for_every_sample8(r))/2.0;
+				}
+				if (data_size == 2) {
+					int16_t l,r;
+					memcpy(&l, frame->data[0] + data_size*(i*chcount+lch), 2);
+					memcpy(&r, frame->data[0] + data_size*(i*chcount+rch), 2);
+					buf[bufloc++] = (for_every_sample16(l)+for_every_sample16(r))/2.0;
+				}
+				if (data_size == 4 && audio_format_is_float) {
+					float l,r;
+					memcpy(&l, frame->data[0] + data_size*(i*chcount+lch), 4);
+					memcpy(&r, frame->data[0] + data_size*(i*chcount+rch), 4);
+					buf[bufloc++] = (for_every_sample(l)+for_every_sample(r))/2.0;
+				}
+				else if (data_size == 4) {
+					int32_t l,r;
+					memcpy(&l, frame->data[0] + data_size*(i*chcount+lch), 4);
+					memcpy(&r, frame->data[0] + data_size*(i*chcount+rch), 4);
+					buf[bufloc++] = (for_every_sample32(l)+for_every_sample32(r))/2.0;
+				}
+				if (data_size == 8 && audio_format_is_float) {
+					double l,r;
+					float lf,rf;
+					memcpy(&l, frame->data[0] + data_size*(i*chcount+lch), 8);
+					memcpy(&r, frame->data[0] + data_size*(i*chcount+rch), 8);
+					lf = (float)l;
+					rf = (float)r;
+					buf[bufloc++] = (for_every_sample(lf)+for_every_sample32(rf))/2.0;
+				}
+				else if (data_size == 8) {
+					int64_t l,r;
+					int32_t l32,r32;
+					memcpy(&l, frame->data[0] + data_size*(i*chcount+lch), 8);
+					memcpy(&r, frame->data[0] + data_size*(i*chcount+rch), 8);
+					l32 = l>>32;
+					r32 = r>>32;
+					buf[bufloc++] = (for_every_sample32(l32)+for_every_sample32(r32))/2.0;
+				}
+			} else {
+				if (data_size == 1) {
+					uint8_t l,r;
+					memcpy(&l, frame->data[lch] + data_size*i, 1);
+					memcpy(&r, frame->data[rch] + data_size*i, 1);
+					buf[bufloc++] = (for_every_sample8(l)+for_every_sample8(r))/2.0;
+				}
+				if (data_size == 2) {
+					int16_t l,r;
+					memcpy(&l, frame->data[lch] + data_size*i, 2);
+					memcpy(&r, frame->data[rch] + data_size*i, 2);
+					buf[bufloc++] = (for_every_sample16(l)+for_every_sample16(r))/2.0;
+				}
+				if (data_size == 4 && audio_format_is_float) {
+					float l,r;
+					memcpy(&l, frame->data[lch] + data_size*i, 4);
+					memcpy(&r, frame->data[rch] + data_size*i, 4);
+					buf[bufloc++] = (for_every_sample(l)+for_every_sample(r))/2.0;
+				}
+				else if (data_size == 4) {
+					int32_t l,r;
+					memcpy(&l, frame->data[lch] + data_size*i, 4);
+					memcpy(&r, frame->data[rch] + data_size*i, 4);
+					buf[bufloc++] = (for_every_sample32(l)+for_every_sample32(r))/2.0;
+				}
+				if (data_size == 8 && audio_format_is_float) {
+					double l,r;
+					float lf,rf;
+					memcpy(&l, frame->data[lch] + data_size*i, 8);
+					memcpy(&r, frame->data[rch] + data_size*i, 8);
+					lf = (float)l;
+					rf = (float)r;
+					buf[bufloc++] = (for_every_sample(lf)+for_every_sample(rf))/2.0;
+				}
+				else if (data_size == 8) {
+					int64_t l,r;
+					int32_t l32,r32;
+					memcpy(&l, frame->data[lch] + data_size*i, 8);
+					memcpy(&r, frame->data[rch] + data_size*i, 8);
+					l32 = l>>32;
+					r32 = r>>32;
+					buf[bufloc++] = (for_every_sample32(l32)+for_every_sample(r32))/2.0;
+				}
+			}
+		}
+	}
+	else for (i = 0; i < frame->nb_samples; i++) {
+		for (chid = 0; chid < outchcount; chid++) {
 			int ch = chmap[chid];
 			if (bufloc + 1 > (int)(sizeof(buf)/sizeof(*buf))) {
 				fprintf(stderr, "Buffer size insufficient, very strange audio file\n");
@@ -520,8 +620,8 @@ void output_audio_frame(AVFrame *frame)
 	{
 		src_data.data_in = buf;
 		src_data.data_out = out_float;
-		src_data.output_frames = sizeof(out_float)/sizeof(*out_float)/(chcount>2 ? 2 : chcount);
-		src_data.input_frames = bufloc/(chcount>2 ? 2 : chcount);
+		src_data.output_frames = sizeof(out_float)/sizeof(*out_float)/outchcount;
+		src_data.input_frames = bufloc/outchcount;
 		src_data.end_of_input = 0;
 		src_data.src_ratio = src_ratio;
 		src_process(src_state, &src_data);
@@ -556,8 +656,8 @@ void output_audio_frame(AVFrame *frame)
 			snd_out(dev, out_float, src_data.output_frames_gen);
 		}
 		//printf("Input frames %d, output frames gen %d, input frames used %d\n", (int)src_data.input_frames, (int)src_data.output_frames_gen, (int)src_data.input_frames_used);
-		memmove(&buf[0], &buf[src_data.input_frames_used*(chcount>2 ? 2 : chcount)], (bufloc - src_data.input_frames_used*(chcount>2 ? 2 : chcount))*sizeof(*buf));
-		buffered_frames = bufloc - src_data.input_frames_used * (chcount>2 ? 2 : chcount);
+		memmove(&buf[0], &buf[src_data.input_frames_used*outchcount], (bufloc - src_data.input_frames_used*outchcount)*sizeof(*buf));
+		buffered_frames = bufloc - src_data.input_frames_used * outchcount;
 		bufloc = buffered_frames;
 		if (src_data.output_frames_gen < src_data.output_frames || src_data.input_frames_used == 0)
 		{
@@ -2670,6 +2770,12 @@ int main(int argc, char **argv)
 	if (!dev)
 	{
 		fprintf(stderr, "Can't open audio device\n");
+		handler_impl();
+		exit(1);
+	}
+	if (obtained.channels < 1 || obtained.channels > 2)
+	{
+		fprintf(stderr, "Obtained unsupported channel conf\n");
 		handler_impl();
 		exit(1);
 	}
