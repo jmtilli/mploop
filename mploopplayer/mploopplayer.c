@@ -556,8 +556,8 @@ void output_audio_frame(AVFrame *frame)
 			snd_out(dev, out_float, src_data.output_frames_gen);
 		}
 		//printf("Input frames %d, output frames gen %d, input frames used %d\n", (int)src_data.input_frames, (int)src_data.output_frames_gen, (int)src_data.input_frames_used);
-		memmove(&buf[0], &buf[src_data.input_frames_used*(chcount>2 ? 2 : chcount)], bufloc/(chcount>2 ? 2 : chcount) - src_data.input_frames_used);
-		buffered_frames = (bufloc/(chcount>2 ? 2 : chcount) - src_data.input_frames_used) * (chcount>2 ? 2 : chcount);
+		memmove(&buf[0], &buf[src_data.input_frames_used*(chcount>2 ? 2 : chcount)], (bufloc - src_data.input_frames_used*(chcount>2 ? 2 : chcount))*sizeof(*buf));
+		buffered_frames = bufloc - src_data.input_frames_used * (chcount>2 ? 2 : chcount);
 		bufloc = buffered_frames;
 		if (src_data.output_frames_gen < src_data.output_frames || src_data.input_frames_used == 0)
 		{
@@ -2674,7 +2674,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 	obtained_data_size = 4;
-	src_ratio = ((float)obtained.rate)/((float)desired.rate);
+	src_ratio = ((float)obtained.rate)/((float)adecctx->sample_rate);
 	int error = 0;
 	src_state = src_new(SRC_SINC_MEDIUM_QUALITY, obtained.channels, &error);
 	if (!src_state)
