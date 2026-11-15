@@ -11,7 +11,7 @@ $WITH_PULSE ?= @nil
   @elseif(@strcmp($WITH_PULSE, "0") == 0)
     $WITH_PULSE=@false
   @else
-    $E `= ["sh", "-c", "pkg-config libpulse-simple --exists && printf 1 || printf 0"]
+    $E `= ["sh", "-c", "pkg-config libpulse-simple --exists && printf 1 || printf 0"]
     $WITH_PULSE=(@strcmp($E, "1") == 0)
   @endif
 @endif
