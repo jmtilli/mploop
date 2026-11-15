@@ -16,15 +16,6 @@ libmploop.touch()
 
 # Mandatory tools to run:
 # - mplayer or mploopplayer
-# Recommended tools to run:
-# - file
-# - id3v2
-# - id3tool
-# - mp3gain
-# - metaflac
-# - vorbiscomment
-# - opusinfo or opustags
-# - AtomicParsley
 
 # ReplayGain was originally -20 dBFS (83 dB), but was later changed to -14
 # dBFS (89 dB) in the data itself. ReplayGain suggested an optional 6 dB
