@@ -101,3 +101,5 @@ $(PROG) = @sufsuball($(SRC_PROG), ".c", "")
 'libmploopplayer.a': $(OBJ_LIB)
 @	["rm", "-f", $@]
 @	[@$(AR), "rvs", $@, @@suffilter($^, ".o")]
+
+@cdepincludes @autotarget @autophony @ignore $(DEP)
