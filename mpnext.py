@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 from __future__ import print_function
 from __future__ import division
-import libmploop
 import sys
+sys.dont_write_bytecode = True
+import libmploop
 
 if len(sys.argv) <= 1:
     cnt = 1
