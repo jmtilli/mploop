@@ -2235,8 +2235,6 @@ int main(int argc, char **argv)
 	int identify = 0;
 	const char *sockarg = NULL;
 	struct sockaddr_un sun;
-	uint32_t inqueue;
-	uint32_t bytes_per_sec;
 	struct KeyVal *cur;
 #if 0
 	AVStream *audio_stream;
