@@ -3,24 +3,83 @@
 
 $LDFLAGS ?= []
 
-$SDL2_CFLAGS ``= ["pkg-config", "sdl2", "--cflags"]
+$WITH_PULSE ?= @nil
+@if(@type($WITH_PULSE)==@type(@nil))
+  $WITH_PULSE `= ["sh", "-c", 'printf "%s" "$MPLOOP_WITH_PULSE"']
+  @if(@strcmp($WITH_PULSE, "1") == 0)
+    $WITH_PULSE=@true
+  @elseif(@strcmp($WITH_PULSE, "0") == 0)
+    $WITH_PULSE=@false
+  @else
+    $E `= ["sh", "-c", "pkg-config libpulse-simple --exists && printf 1 || printf 0"]
+    $WITH_PULSE=(@strcmp($E, "1") == 0)
+  @endif
+@endif
+$WITH_SDL ?= @nil
+@if(@type($WITH_SDL)==@type(@nil))
+  $WITH_SDL `= ["sh", "-c", 'printf "%s" "$MPLOOP_WITH_SDL"']
+  @if(@strcmp($WITH_SDL, "1") == 0)
+    $WITH_SDL=@true
+  @elseif(@strcmp($WITH_SDL, "0") == 0)
+    $WITH_SDL=@false
+  @else
+    $WITH_SDL=@false
+  @endif
+@endif
+$WITH_SNDIO ?= @nil
+@if(@type($WITH_SNDIO)==@type(@nil))
+  $WITH_SNDIO `= ["sh", "-c", 'printf "%s" "$MPLOOP_WITH_SNDIO"']
+  @if(@strcmp($WITH_SNDIO, "1") == 0)
+    $WITH_SNDIO=@true
+  @elseif(@strcmp($WITH_SNDIO, "0") == 0)
+    $WITH_SNDIO=@false
+  @else
+    $WITH_SNDIO=@true
+  @endif
+@endif
+
 $AVF_CFLAGS ``= ["pkg-config", "libavformat", "--cflags"]
 $AVU_CFLAGS ``= ["pkg-config", "libavutil", "--cflags"]
 $AVC_CFLAGS ``= ["pkg-config", "libavcodec", "--cflags"]
-$SIO_CFLAGS ``= ["sh", "-c", "pkg-config sndio --exists && pkg-config sndio --cflags || echo"]
-$PS_CFLAGS ``= ["pkg-config", "libpulse-simple", "--cflags"]
 $SRC_CFLAGS ``= ["pkg-config", "samplerate", "--cflags"]
-$SDL2_LIBS ``= ["pkg-config", "sdl2", "--libs"]
 $AVF_LIBS ``= ["pkg-config", "libavformat", "--libs"]
 $AVU_LIBS ``= ["pkg-config", "libavutil", "--libs"]
 $AVC_LIBS ``= ["pkg-config", "libavcodec", "--libs"]
-$SIO_LIBS ``= ["sh", "-c", "pkg-config sndio --exists && pkg-config sndio --libs || echo -lsndio"]
-$PS_LIBS ``= ["pkg-config", "libpulse-simple", "--libs"]
 $SRC_LIBS ``= ["pkg-config", "samplerate", "--libs"]
-$CFLAGS += [@$SDL2_CFLAGS, @$AVF_CFLAGS, @$AVU_CFLAGS, @$AVC_CFLAGS, @$SIO_CFLAGS, @$PS_CFLAGS, @$SRC_CFLAGS]
-$LIBS = [@$SDL2_LIBS, @$AVF_LIBS, @$AVU_LIBS, @$AVC_LIBS, @$SIO_LIBS, @$PS_LIBS, @$SRC_LIBS, "-lm"]
+$CFLAGS += [@$AVF_CFLAGS, @$AVU_CFLAGS, @$AVC_CFLAGS, @$SRC_CFLAGS]
+$LIBS = [@$AVF_LIBS, @$AVU_LIBS, @$AVC_LIBS, @$SRC_LIBS]
 
-$SRC_LIB = ["sndout.c", "sndout_sdl2.c", "sndout_sndio.c", "sndout_pulsesimple.c"]
+$SRC_LIB = ["sndout.c"]
+
+@if($WITH_SDL)
+  $SDL2_CFLAGS ``= ["pkg-config", "sdl2", "--cflags"]
+  $SDL2_LIBS ``= ["pkg-config", "sdl2", "--libs"]
+  $CFLAGS += [@$SDL2_CFLAGS]
+  $LIBS += [@$SDL2_LIBS]
+  $SRC_LIB += ["sndout_sdl2.c"]
+@else
+  $SRC_LIB += ["sndout_sdl2_no.c"]
+@endif
+@if($WITH_SNDIO)
+  $SNDIO_CFLAGS ``= ["sh", "-c", "pkg-config sndio --exists && pkg-config sndio --cflags || echo"]
+  $SNDIO_LIBS ``= ["sh", "-c", "pkg-config sndio --exists && pkg-config sndio --libs || echo -lsndio"]
+  $CFLAGS += [@$SNDIO_CFLAGS]
+  $LIBS += [@$SNDIO_LIBS]
+  $SRC_LIB += ["sndout_sndio.c"]
+@else
+  $SRC_LIB += ["sndout_sndio_no.c"]
+@endif
+@if($WITH_PULSE)
+  $PULSE_CFLAGS ``= ["pkg-config", "libpulse-simple", "--cflags"]
+  $PULSE_LIBS ``= ["pkg-config", "libpulse-simple", "--libs"]
+  $CFLAGS += [@$PULSE_CFLAGS]
+  $LIBS += [@$PULSE_LIBS]
+  $SRC_LIB += ["sndout_pulsesimple.c"]
+@else
+  $SRC_LIB += ["sndout_pulsesimple_no.c"]
+@endif
+$LIBS += ["-lm"]
+
 $SRC_PROG = ["mploopplayer.c"]
 $SRC = [@$SRC_LIB, @$SRC_PROG]
 $(DEP) = @sufsuball($(SRC), ".c", ".d")

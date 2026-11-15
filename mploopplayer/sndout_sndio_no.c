@@ -1,4 +1,3 @@
-#include <sndio.h>
 #include <stdlib.h>
 #include "sndout.h"
 #include "sndoutdev.h"

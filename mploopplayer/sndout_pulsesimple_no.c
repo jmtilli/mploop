@@ -1,5 +1,3 @@
-#include <pulse/error.h>
-#include <pulse/simple.h>
 #include <stdlib.h>
 #include "sndout.h"
 #include "sndoutdev.h"
