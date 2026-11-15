@@ -48,7 +48,7 @@ int chcount;
 int data_size;
 int obtained_data_size;
 float buf[1048576/4];
-int bufloc;
+unsigned bufloc;
 int nonplanar = 0;
 float duration;
 int audio_format_is_float = -12345;
@@ -286,19 +286,25 @@ void print_status(const char *fmt, ...)
 	char *buf;
 	va_start(ap, fmt);
 	len = vsnprintf(NULL, 0, fmt, ap);
+	if (len < 0 || (size_t)len == SIZE_MAX)
+	{
+		fprintf(stderr, "Negative or too big length, most likely encoding error\n");
+		handler_impl();
+		exit(1);
+	}
 	if (len > max_len)
 	{
 		max_len = len;
 	}
 	va_end(ap);
-	buf = malloc(len+1);
+	buf = malloc((size_t)len+1);
 	if (buf == NULL) {
 		fprintf(stderr, "Cannot allocate line buffer, probably out of memory\n");
 		handler_impl();
 		exit(1);
 	}
 	va_start(ap, fmt);
-	vsnprintf(buf, len+1, fmt, ap);
+	vsnprintf(buf, (size_t)len+1, fmt, ap);
 	va_end(ap);
 	if (old_status && strcmp(buf, old_status) == 0)
 	{
@@ -430,10 +436,10 @@ float out_float[1048576*4];
 void output_audio_frame(AVFrame *frame)
 {
 	int i;
-	int chid;
-	int outchcount = obtained.channels;
+	unsigned chid;
+	unsigned outchcount = obtained.channels;
 	int chmap[2] = {leftidx, rightidx};
-	SRC_DATA src_data = {};
+	SRC_DATA src_data = {.end_of_input = 0};
 #if 0
 	size_t unpadded_linesize = frame->nb_samples * av_get_bytes_per_sample(frame->format);
 #endif
@@ -667,8 +673,15 @@ void output_audio_frame(AVFrame *frame)
 			snd_out(dev, out_float, src_data.output_frames_gen);
 		}
 		//printf("Input frames %d, output frames gen %d, input frames used %d\n", (int)src_data.input_frames, (int)src_data.output_frames_gen, (int)src_data.input_frames_used);
-		memmove(&buf[0], &buf[src_data.input_frames_used*outchcount], (bufloc - src_data.input_frames_used*outchcount)*sizeof(*buf));
-		buffered_frames = bufloc - src_data.input_frames_used * outchcount;
+		if (src_data.input_frames_used > 0)
+		{
+			memmove(&buf[0], &buf[src_data.input_frames_used*outchcount], (bufloc - (unsigned)src_data.input_frames_used*outchcount)*sizeof(*buf));
+			buffered_frames = bufloc - src_data.input_frames_used * outchcount;
+		}
+		else
+		{
+			buffered_frames = bufloc;
+		}
 		bufloc = buffered_frames;
 		if (src_data.output_frames_gen < src_data.output_frames || src_data.input_frames_used == 0)
 		{
@@ -715,19 +728,20 @@ void log_cb(void *avcl, int level, const char *fmt, va_list ap)
 	linesize = rawlinesize+2048;
 #endif
 	va_end(ap2);
-	if (linesize < 0) {
+	if (linesize < 0 || (size_t)linesize == SIZE_MAX ||
+	    rawlinesize < 0 || (size_t)rawlinesize == SIZE_MAX) {
 		fprintf(stderr, "Error when logging\n");
 		handler_impl();
 		exit(1);
 	}
-	linebuf = malloc(linesize+1);
+	linebuf = malloc((size_t)linesize+1);
 	if (linebuf == NULL)
 	{
 		fprintf(stderr, "Out of memory\n");
 		handler_impl();
 		exit(1);
 	}
-	rawlinebuf = malloc(rawlinesize+1);
+	rawlinebuf = malloc((size_t)rawlinesize+1);
 	if (rawlinebuf == NULL)
 	{
 		fprintf(stderr, "Out of memory\n");
@@ -744,7 +758,7 @@ void log_cb(void *avcl, int level, const char *fmt, va_list ap)
 	av_log_format_line(avcl, level, fmt, ap3, linebuf, linesize+1, &print_prefix);
 #endif
 	va_end(ap3);
-	if (vsnprintf(rawlinebuf, rawlinesize+1, fmt, ap4) < 0) {
+	if (vsnprintf(rawlinebuf, (size_t)rawlinesize+1, fmt, ap4) < 0) {
 		fprintf(stderr, "Error when logging\n");
 		handler_impl();
 		exit(1);
@@ -1249,10 +1263,10 @@ uint32_t get_u32_le(const void *ptr)
 {
 	const char *cptr = ptr;
 	return
-		((uint8_t)cptr[0]) |
-		(((uint8_t)cptr[1])<<8) |
-		(((uint8_t)cptr[2])<<16) |
-		(((uint8_t)cptr[3])<<24);
+		((uint32_t)(uint8_t)cptr[0]) |
+		(((uint32_t)(uint8_t)cptr[1])<<8) |
+		(((uint32_t)(uint8_t)cptr[2])<<16) |
+		(((uint32_t)(uint8_t)cptr[3])<<24);
 }
 
 uint32_t decode_syncsafe(const void *ptr)
@@ -1308,7 +1322,7 @@ int maybe_unsync_read_aftersz(FILE *f, int unsync, void *buf, size_t sz, uint32_
 			}
 			else
 			{
-				*cbuf++ = (uint8_t)ch;
+				*cbuf++ = (char)(uint8_t)ch;
 				cur_unsync = 0;
 			}
 		}
@@ -1344,7 +1358,7 @@ int maybe_unsync_read(FILE *f, int unsync, void *buf, size_t sz)
 			}
 			else
 			{
-				*cbuf++ = (uint8_t)ch;
+				*cbuf++ = (char)(uint8_t)ch;
 				cur_unsync = 0;
 			}
 		}
@@ -2829,7 +2843,7 @@ int main(int argc, char **argv)
 	}
 	//printf("Rate %d\n", adecctx->sample_rate);
 	desired.channels = chcount > 2 ? 2 : chcount; // FIXME
-	desired.rate = adecctx->sample_rate;
+	desired.rate = (unsigned)adecctx->sample_rate;
 	// $XDG_RUNTIME_DIR/pulse/native is a socket if pulseaudio is used
 	// except $PULSE_SERVER if set, that socket is used instead
 	for (i = 0; i < sndout_order_cnt; i++)
@@ -2903,8 +2917,8 @@ int main(int argc, char **argv)
 	snd_out_unpause(dev);
 	struct termios term;
 	tcgetattr(fileno(stdin), &term);
-	term.c_lflag &= ~ECHO;
-	term.c_lflag &= ~ICANON;
+	term.c_lflag &= ~(tcflag_t)ECHO;
+	term.c_lflag &= ~(tcflag_t)ICANON;
 	tcsetattr(fileno(stdin), 0, &term);
 	signal(SIGINT, handler);
 	signal(SIGTERM, handler);
