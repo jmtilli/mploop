@@ -165,7 +165,7 @@ void snd_out_ps_out(struct sndout_device *dev, const float *samples, unsigned nu
 				}
 				else
 				{
-					samples2[i] = 2147483647*samples[i];
+					samples2[i] = 2147483647*(double)samples[i];
 				}
 			}
 			pa_simple_write(ps->s, samples2, numsamplesall*sizeof(int32_t), &error);
@@ -186,7 +186,7 @@ void snd_out_ps_out(struct sndout_device *dev, const float *samples, unsigned nu
 				}
 				else
 				{
-					samples2[i] = 2147483647U+2147483647U*samples[i];
+					samples2[i] = 2147483647U+2147483647U*(double)samples[i];
 				}
 			}
 			pa_simple_write(ps->s, samples2, numsamplesall*sizeof(uint32_t), &error);

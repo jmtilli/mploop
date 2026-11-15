@@ -278,7 +278,7 @@ void snd_out_sdl2_out(struct sndout_device *dev, const float *samples, unsigned 
 					}
 					else
 					{
-						samples2[i] = 2147483647*samples[i];
+						samples2[i] = 2147483647*(double)samples[i];
 					}
 				}
 				SDL_QueueAudio(audid, samples2, numsamplesall*sizeof(int32_t));
@@ -299,7 +299,7 @@ void snd_out_sdl2_out(struct sndout_device *dev, const float *samples, unsigned 
 					}
 					else
 					{
-						samples2[i] = 2147483647U+2147483647U*samples[i];
+						samples2[i] = 2147483647U+2147483647U*(double)samples[i];
 					}
 				}
 				SDL_QueueAudio(audid, samples2, numsamplesall*sizeof(uint32_t));
@@ -323,7 +323,7 @@ void snd_out_sdl2_out(struct sndout_device *dev, const float *samples, unsigned 
 					}
 					else
 					{
-						samples2[i] = bswap32(2147483647*samples[i]);
+						samples2[i] = bswap32(2147483647*(double)samples[i]);
 					}
 				}
 				SDL_QueueAudio(audid, samples2, numsamplesall*sizeof(int32_t));
@@ -344,7 +344,7 @@ void snd_out_sdl2_out(struct sndout_device *dev, const float *samples, unsigned 
 					}
 					else
 					{
-						samples2[i] = bswap32(2147483647U+2147483647U*samples[i]);
+						samples2[i] = bswap32(2147483647U+2147483647U*(double)samples[i]);
 					}
 				}
 				SDL_QueueAudio(audid, samples2, numsamplesall*sizeof(uint32_t));
