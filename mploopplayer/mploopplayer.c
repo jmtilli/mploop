@@ -53,7 +53,9 @@ int nonplanar = 0;
 float duration;
 int audio_format_is_float = -12345;
 char volfilebuf[PATH_MAX+1];
+char soutfilebuf[PATH_MAX+1];
 const char *volfile = NULL;
+const char *soutfile = NULL;
 AVFormatContext *avfctx = NULL;
 int aidx;
 int usegain = 0;
@@ -2325,10 +2327,10 @@ int main(int argc, char **argv)
 				fclose(f);
 			}
 		}
-		if (snprintf(volfilebuf, sizeof(volfilebuf), "%s/.mploop/sndout.txt", homedir) < (int)sizeof(volfilebuf)) {
+		if (snprintf(soutfilebuf, sizeof(soutfilebuf), "%s/.mploop/sndout.txt", homedir) < (int)sizeof(soutfilebuf)) {
 			FILE *f;
-			volfile = volfilebuf;
-			f = fopen(volfile, "r");
+			soutfile = soutfilebuf;
+			f = fopen(soutfile, "r");
 			if (f) {
 				char sndline[256];
 				while (fgets(sndline, (int)sizeof(sndline), f))
@@ -2339,7 +2341,7 @@ int main(int argc, char **argv)
 					}
 					if (sndout_order_cnt >= (int)(sizeof(sndout_order)/sizeof(*sndout_order)))
 					{
-						fprintf(stderr, "Too many sndout providers in %s\n", volfile);
+						fprintf(stderr, "Too many sndout providers in %s\n", soutfile);
 						handler_impl();
 						exit(1);
 					}
@@ -2365,7 +2367,7 @@ int main(int argc, char **argv)
 					}
 					else
 					{
-						fprintf(stderr, "In %s, unknown sndout provider: %s\n", volfile, sndline);
+						fprintf(stderr, "In %s, unknown sndout provider: %s\n", soutfile, sndline);
 						handler_impl();
 						exit(1);
 					}
