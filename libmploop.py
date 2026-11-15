@@ -27,6 +27,12 @@ import errno
 # and non-ReplayGain tracks. The offset here applies only to ReplayGain tracks.
 # offset means positive, but offset2 means negative.
 offset = 6.0
+offsetexpanded = os.path.expanduser('~') + '/.mploop/replaygainoffset.txt'
+try:
+    with open(offsetexpanded, "r") as f:
+        offset = float(f.read())
+except FileNotFoundError:
+    pass
 
 mploopplayer = os.path.dirname(os.path.realpath(sys.argv[0])) + '/mploopplayer/mploopplayer'
 if not os.access(mploopplayer, os.X_OK):
