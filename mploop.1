@@ -121,7 +121,7 @@ music,
 .Nm mploop
 skips the song where the error occurred and continues playing music.
 .Sh FILES
-.Bl -column ~/.mploop/sndout.txt -compact
+.Bl -column ~/.mploop/replaygainoffset.txt -compact
 .It Pa ~/.mploop/sndout.txt Ta List of sound output providers, one per line, in order of trying them. Applies only to
 .Nm mploopplayer ,
 not to
@@ -130,6 +130,7 @@ The supported providers are
 .Nm pulse ,
 .Nm sndio ,
 .Nm sdl2 .
+.It Pa ~/.mploop/replaygainoffset.txt Ta Add this many decibels to all files tagged with ReplayGain tags. This is done in a manner that doesn't reduce the dynamic range if the volume is adjusted down after this conversion.
 .El
 .Sh ENVIRONMENT
 .Nm mploop
