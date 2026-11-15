@@ -58,7 +58,9 @@ To play music,
 .Nm mploop
 uses either
 .Xr mplayer 1
-or the included player mploopplayer. Both share the same basic shortcuts.
+or the included player
+.Nm mploopplayer .
+Both share the same basic shortcuts.
 .Pp
 .Sy "keyboard control"
 .Pp
@@ -80,9 +82,13 @@ Decrease/increase volume.
 .El
 .Sh "FILE FORMAT SUPPORT"
 .Nm mploop
-can play files using the included mploopplayer or by using
+can play files using the included
+.Nm mploopplayer
+or by using
 .Xr mplayer 1 .
-If the included mploopplayer is used, then
+If the included
+.Nm mploopplayer
+is used, then
 .Nm mploop
 can play back all formats supported by libavformat and libavcodec.
 .Pp
@@ -91,12 +97,20 @@ Also comment tags are supported for the same formats. The comment tags are
 automatically converted to Vorbis comments and then displayed.
 .Sh "AUDIO DRIVER SUPPORT"
 .Nm mploop
-can output audio using the included mploopplayer or by using
+can output audio using the included
+.Nm mploopplayer
+or by using
 .Xr mplayer 1 .
-If the included mploopplayer is used, then
+If the included
+.Nm mploopplayer
+is used, then
 .Nm mploop
-plays back audio using SDL2 so it supports all audio drivers that the SDL2
-library supports.
+plays back audio using either pulseaudio libpulse-simple library (the interface
+should be compatible with pipewire as well), sndio or SDL2. The default order
+of trying them is
+.Nm pulse ,
+.Nm sndio ,
+.Nm sdl2 .
 .Sh "EXIT STATUS"
 .Nm mploop
 does not exit except when interrupted, since it waits for music to arrive
@@ -106,6 +120,17 @@ returns with a nonzero exit status. However, if there's an error in playing
 music,
 .Nm mploop
 skips the song where the error occurred and continues playing music.
+.Sh FILES
+.Bl -column ~/.mploop/sndout.txt -compact
+.It Pa ~/.mploop/sndout.txt Ta List of sound output providers, one per line, in order of trying them. Applies only to
+.Nm mploopplayer ,
+not to
+.Xr mplayer 1 .
+The supported providers are
+.Nm pulse ,
+.Nm sndio ,
+.Nm sdl2 .
+.El
 .Sh ENVIRONMENT
 .Nm mploop
 uses the following environment variables:
