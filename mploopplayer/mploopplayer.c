@@ -951,7 +951,7 @@ int skip_key(const char *key)
 	return 0;
 }
 
-const double offset = 6.0;
+double offset = 6.0;
 int has_albumgain = 0;
 int has_trackgain = 0;
 double albumgain = 0;
@@ -2254,7 +2254,7 @@ int main(int argc, char **argv)
 	AVStream *audio_stream;
 #endif
 
-	while ((opt = getopt(argc, argv, "ius:g:GW:")) != -1) {
+	while ((opt = getopt(argc, argv, "ius:g:GW:o:")) != -1) {
 		switch (opt) {
 			case 'i':
 				identify = 1;
@@ -2271,6 +2271,16 @@ int main(int argc, char **argv)
 				break;
 			case 'W':
 				writenp = optarg;
+				break;
+			case 'o':
+				if (!optarg)
+				{
+					usage(argv[0]);
+				}
+				offset = strtof(optarg, &endptr);
+				if (*optarg == '\0' || *endptr != '\0') {
+					usage(argv[0]);
+				}
 				break;
 			case 'g':
 				if (!optarg)
@@ -2882,7 +2892,18 @@ int main(int argc, char **argv)
 	obtained_data_size = 4;
 	src_ratio = ((float)obtained.rate)/((float)adecctx->sample_rate);
 	int error = 0;
-	src_state = src_new(SRC_SINC_MEDIUM_QUALITY, obtained.channels, &error);
+	if (obtained.rate >= 44000 && adecctx->sample_rate >= 44000)
+	{
+		// The most common conversion is between 44100 and 48000
+		// Use fast conversion with 80% bandwidth
+		src_state = src_new(SRC_SINC_FASTEST, obtained.channels, &error);
+	}
+	else
+	{
+		// For lower rates, it's beneficial to spend more CPU time
+		// for the conversion to get 90% bandwidth
+		src_state = src_new(SRC_SINC_MEDIUM_QUALITY, obtained.channels, &error);
+	}
 	if (!src_state)
 	{
 		fprintf(stderr, "Can't open resampler\n");

@@ -127,7 +127,7 @@ try:
             if hasgain:
                 proc = subprocess.Popen([libmploop.mploopplayer] + urlargs + ["-s", libmploop.sockexpanded, "-W", npf, "-g", str(gain-offset2-mploopplayer_extraoffset), "--", ln])
             else:
-                proc = subprocess.Popen([libmploop.mploopplayer] + urlargs + ["-s", libmploop.sockexpanded, "-G", "-W", npf, "-g", str(0.0-offset2-mploopplayer_extraoffset), "--", ln])
+                proc = subprocess.Popen([libmploop.mploopplayer] + urlargs + ["-s", libmploop.sockexpanded, "-G", "-W", npf, "-o", str(libmploop.offset), "-g", str(0.0-offset2-mploopplayer_extraoffset), "--", ln])
             with open(libmploop.mploopplayerpidexpanded, 'w') as f:
                 f.write(str(proc.pid) + '\n')
             proc.wait()
