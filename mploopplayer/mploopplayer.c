@@ -31,6 +31,15 @@ struct sndout_settings obtained;
 SRC_STATE *src_state;
 float src_ratio = 1.0;
 
+enum sndout_type {
+  SNDOUT_SDL2,
+  SNDOUT_SNDIO,
+  SNDOUT_PULSESIMPLE,
+};
+
+enum sndout_type sndout_order[16];
+int sndout_order_cnt = 0;
+
 int leftidx = -1;
 int rightidx = -1;
 AVCodecContext *adecctx;
@@ -2217,6 +2226,7 @@ int main(int argc, char **argv)
 	char *fnamebuf;
 	const char *homedir;
 	int first;
+	int i;
 	int sock = -1;
 	int usesock = 0;
 	int urlmode = 0;
@@ -2315,6 +2325,60 @@ int main(int argc, char **argv)
 				fclose(f);
 			}
 		}
+		if (snprintf(volfilebuf, sizeof(volfilebuf), "%s/.mploop/sndout.txt", homedir) < (int)sizeof(volfilebuf)) {
+			FILE *f;
+			volfile = volfilebuf;
+			f = fopen(volfile, "r");
+			if (f) {
+				char sndline[256];
+				while (fgets(sndline, (int)sizeof(sndline), f))
+				{
+					if (strcmp(sndline, "") == 0)
+					{
+						continue;
+					}
+					if (sndout_order_cnt >= (int)(sizeof(sndout_order)/sizeof(*sndout_order)))
+					{
+						fprintf(stderr, "Too many sndout providers in %s\n", volfile);
+						handler_impl();
+						exit(1);
+					}
+					if (sndline[strlen(sndline)-1] == '\n')
+					{
+						sndline[strlen(sndline)-1] = '\0';
+					}
+					if (sndline[strlen(sndline)-1] == '\r')
+					{
+						sndline[strlen(sndline)-1] = '\0';
+					}
+					if (strcmp(sndline, "pulse") == 0)
+					{
+						sndout_order[sndout_order_cnt++] = SNDOUT_PULSESIMPLE;
+					}
+					else if (strcmp(sndline, "sndio") == 0)
+					{
+						sndout_order[sndout_order_cnt++] = SNDOUT_SNDIO;
+					}
+					else if (strcmp(sndline, "sdl2") == 0)
+					{
+						sndout_order[sndout_order_cnt++] = SNDOUT_SDL2;
+					}
+					else
+					{
+						fprintf(stderr, "In %s, unknown sndout provider: %s\n", volfile, sndline);
+						handler_impl();
+						exit(1);
+					}
+				}
+				fclose(f);
+			}
+		}
+	}
+	if (sndout_order_cnt == 0)
+	{
+		sndout_order[sndout_order_cnt++] = SNDOUT_PULSESIMPLE;
+		sndout_order[sndout_order_cnt++] = SNDOUT_SNDIO;
+		sndout_order[sndout_order_cnt++] = SNDOUT_SDL2;
 	}
 	if (argc != optind + 1) {
 		usage(argv[0]);
@@ -2768,14 +2832,26 @@ int main(int argc, char **argv)
 	desired.rate = adecctx->sample_rate;
 	// $XDG_RUNTIME_DIR/pulse/native is a socket if pulseaudio is used
 	// except $PULSE_SERVER if set, that socket is used instead
-	dev = sndout_open_pulsesimple(&desired, &obtained);
-	if (!dev)
+	for (i = 0; i < sndout_order_cnt; i++)
 	{
-		dev = sndout_open_sndio(&desired, &obtained);
-	}
-	if (!dev)
-	{
-		dev = sndout_open_sdl2(&desired, &obtained);
+		switch (sndout_order[i])
+		{
+			case SNDOUT_PULSESIMPLE:
+				dev = sndout_open_pulsesimple(&desired, &obtained);
+				break;
+			case SNDOUT_SNDIO:
+				dev = sndout_open_sndio(&desired, &obtained);
+				break;
+			case SNDOUT_SDL2:
+				dev = sndout_open_sdl2(&desired, &obtained);
+				break;
+			default:
+				abort();
+		}
+		if (dev)
+		{
+			break;
+		}
 	}
 	if (!dev)
 	{
