@@ -28,6 +28,7 @@ import errno
 # offset means positive, but offset2 means negative.
 offset = 6.0
 offsetexpanded = os.path.expanduser('~') + '/.mploop/replaygainoffset.txt'
+negativeoffset2expanded = os.path.expanduser('~') + '/.mploop/negativeoffset2.txt'
 try:
     with open(offsetexpanded, "r") as f:
         offset = float(f.read())

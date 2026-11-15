@@ -38,6 +38,11 @@ libmploop.touch()
 # as loudly as the "loudness war" era music, thus reducing dynamic range.
 # However, offset2 gives extra dynamic range headroom for all music.
 offset2 = 6.0
+try:
+    with open(libmploop.negativeoffset2expanded, "r") as f:
+        offset2 = float(f.read())
+except FileNotFoundError:
+    pass
 
 # Extra offset of mploopplayer as compared to mplayer. This is negative, i.e.
 # bigger values reduce the volume of mploopplayer-played music.
