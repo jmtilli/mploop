@@ -15,9 +15,9 @@ import errno
 libmploop.touch()
 
 # Mandatory tools to run:
-# - mplayer
-# - file
+# - mplayer or mploopplayer
 # Recommended tools to run:
+# - file
 # - id3v2
 # - id3tool
 # - mp3gain
