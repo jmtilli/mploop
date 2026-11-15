@@ -179,15 +179,15 @@ void snd_out_sndio_out(struct sndout_device *dev, const float *samples, unsigned
 				{
 					if (samples[i] >= 1)
 					{
-						samples2[i] = bswap16(32767);
+						samples2[i] = (int16_t)bswap16((uint16_t)32767);
 					}
 					else if (samples[i] <= -1)
 					{
-						samples2[i] = bswap16(-32767);
+						samples2[i] = (int16_t)bswap16((uint16_t)-32767);
 					}
 					else
 					{
-						samples2[i] = bswap16(32767*samples[i]);
+						samples2[i] = (int16_t)bswap16((uint16_t)(32767*samples[i]));
 					}
 				}
 				sio_write(sndio->hdl, samples2, numsamplesall*sizeof(int16_t));
@@ -272,15 +272,15 @@ void snd_out_sndio_out(struct sndout_device *dev, const float *samples, unsigned
 				{
 					if (samples[i] >= 1)
 					{
-						samples2[i] = bswap32(2147483647);
+						samples2[i] = (int32_t)bswap32((uint32_t)2147483647);
 					}
 					else if (samples[i] <= -1)
 					{
-						samples2[i] = bswap32(-2147483647);
+						samples2[i] = (int32_t)bswap32((uint32_t)-2147483647);
 					}
 					else
 					{
-						samples2[i] = bswap32(2147483647*(double)samples[i]);
+						samples2[i] = (int32_t)bswap32((uint32_t)2147483647*(double)samples[i]);
 					}
 				}
 				sio_write(sndio->hdl, samples2, numsamplesall*sizeof(int32_t));
@@ -355,8 +355,8 @@ struct sndout_device *sndout_open_sndio(struct sndout_settings *desired,
 		return NULL;
 	}
 	sio->hdl = hdl;
-	sio->obtained_bps = obtainedsio.bps;
-	sio->obtained_bits = obtainedsio.bits;
+	sio->obtained_bps = (int)obtainedsio.bps;
+	sio->obtained_bits = (int)obtainedsio.bits;
 	sio->obtained_le = !!obtainedsio.le;
 	sio->obtained_sig = !!obtainedsio.sig;
 	sio->obtained_msb = !!obtainedsio.msb;
