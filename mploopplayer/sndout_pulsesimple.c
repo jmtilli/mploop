@@ -9,6 +9,8 @@ struct sndout_device_pulsesimple {
 	int obtained_bits;
 	int obtained_sig;
 	struct pa_simple *s;
+	int32_t *samples;
+	unsigned samplessz;
 };
 
 static inline struct pa_simple *sndout_ps_s(struct sndout_device *dev)
@@ -49,164 +51,58 @@ void snd_out_ps_closeflush(struct sndout_device *dev)
 
 void snd_out_ps_close(struct sndout_device *dev)
 {
+	struct sndout_device_pulsesimple *ps = dev->userdata;
 	pa_simple_free(sndout_ps_s(dev));
+	free(ps->samples);
+	free(ps);
 }
 
 void snd_out_ps_out(struct sndout_device *dev, const float *samples, unsigned numsamples)
 {
 	struct sndout_device_pulsesimple *ps = dev->userdata;
-	unsigned numsamplesall = dev->obtained.channels*numsamples;
 	unsigned i;
 	int error;
-	if (ps->obtained_bits == 8 && ps->obtained_bps == 1)
-	{
-		if (ps->obtained_sig)
-		{
-			char *samples2 = malloc(numsamplesall);
-			for (i = 0; i < numsamplesall; i++)
-			{
-				if (samples[i] >= 1)
-				{
-					samples2[i] = 127;
-				}
-				else if (samples[i] <= -1)
-				{
-					samples2[i] = -127;
-				}
-				else
-				{
-					samples2[i] = 127*samples[i];
-				}
-			}
-			pa_simple_write(ps->s, samples2, numsamplesall, &error);
-			free(samples2);
-		}
-		else
-		{
-			unsigned char *samples2 = malloc(numsamplesall);
-			for (i = 0; i < numsamplesall; i++)
-			{
-				if (samples[i] >= 1)
-				{
-					samples2[i] = 254;
-				}
-				else if (samples[i] <= -1)
-				{
-					samples2[i] = 0;
-				}
-				else
-				{
-					samples2[i] = 127+127*samples[i];
-				}
-			}
-			pa_simple_write(ps->s, samples2, numsamplesall, &error);
-			free(samples2);
-		}
-	}
-	else if (ps->obtained_bits == 16 && ps->obtained_bps == 2)
-	{
-		if (ps->obtained_sig)
-		{
-			int16_t *samples2 = malloc(numsamplesall*sizeof(int16_t));
-			for (i = 0; i < numsamplesall; i++)
-			{
-				if (samples[i] >= 1)
-				{
-					samples2[i] = 32767;
-				}
-				else if (samples[i] <= -1)
-				{
-					samples2[i] = -32767;
-				}
-				else
-				{
-					samples2[i] = 32767*samples[i];
-				}
-			}
-			pa_simple_write(ps->s, samples2, numsamplesall*sizeof(int16_t), &error);
-			free(samples2);
-		}
-		else
-		{
-			uint16_t *samples2 = malloc(numsamplesall*sizeof(uint16_t));
-			for (i = 0; i < numsamplesall; i++)
-			{
-				if (samples[i] >= 1)
-				{
-					samples2[i] = 32767*2;
-				}
-				else if (samples[i] <= -1)
-				{
-					samples2[i] = 0;
-				}
-				else
-				{
-					samples2[i] = 32767+32767*samples[i];
-				}
-			}
-			pa_simple_write(ps->s, samples2, numsamplesall*sizeof(uint16_t), &error);
-			free(samples2);
-		}
-	}
-	else if (ps->obtained_bits == 32 && ps->obtained_bps == 4)
-	{
-		if (ps->obtained_sig)
-		{
-			int32_t *samples2 = malloc(numsamplesall*sizeof(int32_t));
-			for (i = 0; i < numsamplesall; i++)
-			{
-				if (samples[i] >= 1)
-				{
-					samples2[i] = 2147483647;
-				}
-				else if (samples[i] <= -1)
-				{
-					samples2[i] = -2147483647;
-				}
-				else
-				{
-					samples2[i] = 2147483647*(double)samples[i];
-				}
-			}
-			pa_simple_write(ps->s, samples2, numsamplesall*sizeof(int32_t), &error);
-			free(samples2);
-		}
-		else
-		{
-			uint32_t *samples2 = malloc(numsamplesall*sizeof(uint32_t));
-			for (i = 0; i < numsamplesall; i++)
-			{
-				if (samples[i] >= 1)
-				{
-					samples2[i] = 2147483647U*2;
-				}
-				else if (samples[i] <= -1)
-				{
-					samples2[i] = 0;
-				}
-				else
-				{
-					samples2[i] = 2147483647U+2147483647U*(double)samples[i];
-				}
-			}
-			pa_simple_write(ps->s, samples2, numsamplesall*sizeof(uint32_t), &error);
-			free(samples2);
-		}
-	}
-	else
+	if (ps->obtained_bits != 32 || ps->obtained_bps != 4 || !ps->obtained_sig)
 	{
 		abort();
+	}
+	while (numsamples > 0)
+	{
+		unsigned numsamplesall = dev->obtained.channels*numsamples;
+		unsigned numsamplespossible = ps->samplessz/dev->obtained.channels * dev->obtained.channels;
+		if (numsamplesall > numsamplespossible)
+		{
+			numsamplesall = numsamplespossible;
+		}
+		for (i = 0; i < numsamplesall; i++)
+		{
+			if (samples[i] >= 1)
+			{
+				ps->samples[i] = 2147483647;
+			}
+			else if (samples[i] <= -1)
+			{
+				ps->samples[i] = -2147483647;
+			}
+			else
+			{
+				ps->samples[i] = 2147483647*(double)samples[i];
+			}
+		}
+		pa_simple_write(ps->s, ps->samples, numsamplesall*sizeof(int32_t), &error);
+		samples += numsamplesall;
+		numsamples -= numsamplesall/dev->obtained.channels;
 	}
 }
 
 struct sndout_device *sndout_open_pulsesimple(struct sndout_settings *desired,
                                         struct sndout_settings *obtained)
 {
-	struct pa_sample_spec desiredps;
+	struct pa_sample_spec desiredps = {.rate = 0};
 	struct sndout_device *dev;
 	struct sndout_device_pulsesimple *ps;
 	struct pa_simple *s;
-	int error;
+	int error = 0;
 	desiredps.format = PA_SAMPLE_S32NE;
 	desiredps.rate = desired->rate;
 	desiredps.channels = desired->channels;
@@ -227,9 +123,18 @@ struct sndout_device *sndout_open_pulsesimple(struct sndout_settings *desired,
 	ps->obtained_bps = 4;
 	ps->obtained_bits = 32;
 	ps->obtained_sig = 1;
+	ps->samplessz = obtained->rate*obtained->channels/2; // half a second
+	ps->samples = malloc(ps->samplessz*sizeof(*ps->samples));
+	if (ps->samples == NULL)
+	{
+		pa_simple_free(s);
+		free(ps);
+		return NULL;
+	}
 	dev = malloc(sizeof(*dev));
 	if (!dev)
 	{
+		free(ps->samples);
 		pa_simple_free(s);
 		free(ps);
 		return NULL;
