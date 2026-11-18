@@ -27,7 +27,57 @@ struct sndout_device_sndio {
 	int obtained_sig;
 	int obtained_msb;
 	struct sio_hdl *hdl;
+	union {
+		char *ch;
+		unsigned char *uch;
+		int16_t *i16;
+		uint16_t *u16;
+		int32_t *i32;
+		uint32_t *u32;
+	} samplesu;
+	size_t samplessz;
 };
+
+static void free_samples(struct sndout_device_sndio *sio)
+{
+	if (sio->obtained_bits == 8 && sio->obtained_bps == 1)
+	{
+		if (sio->obtained_sig)
+		{
+			free(sio->samplesu.ch);
+		}
+		else
+		{
+			free(sio->samplesu.uch);
+		}
+	}
+	else if (sio->obtained_bits == 16 && sio->obtained_bps == 2)
+	{
+		if (sio->obtained_sig)
+		{
+			free(sio->samplesu.i16);
+		}
+		else
+		{
+			free(sio->samplesu.u16);
+		}
+	}
+	else if (sio->obtained_bits == 32 && sio->obtained_bps == 4)
+	{
+		if (sio->obtained_sig)
+		{
+			free(sio->samplesu.i32);
+		}
+		else
+		{
+			free(sio->samplesu.u32);
+		}
+	}
+	else
+	{
+		abort();
+	}
+}
 
 static inline struct sio_hdl *sndout_sio_hdl(struct sndout_device *dev)
 {
@@ -70,92 +120,54 @@ void snd_out_sndio_closeflush(struct sndout_device *dev)
 
 void snd_out_sndio_close(struct sndout_device *dev)
 {
+	struct sndout_device_sndio *sndio = dev->userdata;
 	sio_close(sndout_sio_hdl(dev));
+	free_samples(sndio);
+	free(sndio);
 }
 
 void snd_out_sndio_out(struct sndout_device *dev, const float *samples, unsigned numsamples)
 {
 	struct sndout_device_sndio *sndio = dev->userdata;
-	unsigned numsamplesall = dev->obtained.channels*numsamples;
 	unsigned i;
-	if (sndio->obtained_bits == 8 && sndio->obtained_bps == 1)
+	while (numsamples > 0)
 	{
-		if (sndio->obtained_sig)
+		unsigned numsamplesall = dev->obtained.channels*numsamples;
+		unsigned numsamplespossible = sndio->samplessz/dev->obtained.channels*dev->obtained.channels;
+		if (numsamplesall > numsamplespossible)
 		{
-			char *samples2 = malloc(numsamplesall);
-			for (i = 0; i < numsamplesall; i++)
-			{
-				if (samples[i] >= 1)
-				{
-					samples2[i] = 127;
-				}
-				else if (samples[i] <= -1)
-				{
-					samples2[i] = -127;
-				}
-				else
-				{
-					samples2[i] = 127*samples[i];
-				}
-			}
-			sio_write(sndio->hdl, samples2, numsamplesall);
-			free(samples2);
+			numsamplesall = numsamplespossible;
 		}
-		else
-		{
-			unsigned char *samples2 = malloc(numsamplesall);
-			for (i = 0; i < numsamplesall; i++)
-			{
-				if (samples[i] >= 1)
-				{
-					samples2[i] = 254;
-				}
-				else if (samples[i] <= -1)
-				{
-					samples2[i] = 0;
-				}
-				else
-				{
-					samples2[i] = 127+127*samples[i];
-				}
-			}
-			sio_write(sndio->hdl, samples2, numsamplesall);
-			free(samples2);
-		}
-	}
-	else if (sndio->obtained_bits == 16 && sndio->obtained_bps == 2)
-	{
-		if (sndio->obtained_le == SIO_LE_NATIVE)
+		if (sndio->obtained_bits == 8 && sndio->obtained_bps == 1)
 		{
 			if (sndio->obtained_sig)
 			{
-				int16_t *samples2 = malloc(numsamplesall*sizeof(int16_t));
+				char *samples2 = sndio->samplesu.ch;
 				for (i = 0; i < numsamplesall; i++)
 				{
 					if (samples[i] >= 1)
 					{
-						samples2[i] = 32767;
+						samples2[i] = 127;
 					}
 					else if (samples[i] <= -1)
 					{
-						samples2[i] = -32767;
+						samples2[i] = -127;
 					}
 					else
 					{
-						samples2[i] = 32767*samples[i];
+						samples2[i] = 127*samples[i];
 					}
 				}
-				sio_write(sndio->hdl, samples2, numsamplesall*sizeof(int16_t));
-				free(samples2);
+				sio_write(sndio->hdl, samples2, numsamplesall);
 			}
 			else
 			{
-				uint16_t *samples2 = malloc(numsamplesall*sizeof(uint16_t));
+				unsigned char *samples2 = sndio->samplesu.uch;
 				for (i = 0; i < numsamplesall; i++)
 				{
 					if (samples[i] >= 1)
 					{
-						samples2[i] = 32767*2;
+						samples2[i] = 254;
 					}
 					else if (samples[i] <= -1)
 					{
@@ -163,155 +175,196 @@ void snd_out_sndio_out(struct sndout_device *dev, const float *samples, unsigned
 					}
 					else
 					{
-						samples2[i] = 32767+32767*samples[i];
+						samples2[i] = 127+127*samples[i];
 					}
 				}
-				sio_write(sndio->hdl, samples2, numsamplesall*sizeof(uint16_t));
-				free(samples2);
+				sio_write(sndio->hdl, samples2, numsamplesall);
+			}
+		}
+		else if (sndio->obtained_bits == 16 && sndio->obtained_bps == 2)
+		{
+			if (sndio->obtained_le == SIO_LE_NATIVE)
+			{
+				if (sndio->obtained_sig)
+				{
+					int16_t *samples2 = sndio->samplesu.i16;
+					for (i = 0; i < numsamplesall; i++)
+					{
+						if (samples[i] >= 1)
+						{
+							samples2[i] = 32767;
+						}
+						else if (samples[i] <= -1)
+						{
+							samples2[i] = -32767;
+						}
+						else
+						{
+							samples2[i] = 32767*samples[i];
+						}
+					}
+					sio_write(sndio->hdl, samples2, numsamplesall*sizeof(int16_t));
+				}
+				else
+				{
+					uint16_t *samples2 = sndio->samplesu.u16;
+					for (i = 0; i < numsamplesall; i++)
+					{
+						if (samples[i] >= 1)
+						{
+							samples2[i] = 32767*2;
+						}
+						else if (samples[i] <= -1)
+						{
+							samples2[i] = 0;
+						}
+						else
+						{
+							samples2[i] = 32767+32767*samples[i];
+						}
+					}
+					sio_write(sndio->hdl, samples2, numsamplesall*sizeof(uint16_t));
+				}
+			}
+			else
+			{
+				if (sndio->obtained_sig)
+				{
+					int16_t *samples2 = sndio->samplesu.i16;
+					for (i = 0; i < numsamplesall; i++)
+					{
+						if (samples[i] >= 1)
+						{
+							samples2[i] = (int16_t)bswap16((uint16_t)32767);
+						}
+						else if (samples[i] <= -1)
+						{
+							samples2[i] = (int16_t)bswap16((uint16_t)-32767);
+						}
+						else
+						{
+							samples2[i] = (int16_t)bswap16((uint16_t)(32767*samples[i]));
+						}
+					}
+					sio_write(sndio->hdl, samples2, numsamplesall*sizeof(int16_t));
+				}
+				else
+				{
+					uint16_t *samples2 = sndio->samplesu.u16;
+					for (i = 0; i < numsamplesall; i++)
+					{
+						if (samples[i] >= 1)
+						{
+							samples2[i] = bswap16(32767*2);
+						}
+						else if (samples[i] <= -1)
+						{
+							samples2[i] = bswap16(0);
+						}
+						else
+						{
+							samples2[i] = bswap16(32767+32767*samples[i]);
+						}
+					}
+					sio_write(sndio->hdl, samples2, numsamplesall*sizeof(uint16_t));
+				}
+			}
+		}
+		else if (sndio->obtained_bits == 32 && sndio->obtained_bps == 4)
+		{
+			if (sndio->obtained_le == SIO_LE_NATIVE)
+			{
+				if (sndio->obtained_sig)
+				{
+					int32_t *samples2 = sndio->samplesu.i32;
+					for (i = 0; i < numsamplesall; i++)
+					{
+						if (samples[i] >= 1)
+						{
+							samples2[i] = 2147483647;
+						}
+						else if (samples[i] <= -1)
+						{
+							samples2[i] = -2147483647;
+						}
+						else
+						{
+							samples2[i] = 2147483647*(double)samples[i];
+						}
+					}
+					sio_write(sndio->hdl, samples2, numsamplesall*sizeof(int32_t));
+				}
+				else
+				{
+					uint32_t *samples2 = sndio->samplesu.u32;
+					for (i = 0; i < numsamplesall; i++)
+					{
+						if (samples[i] >= 1)
+						{
+							samples2[i] = 2147483647U*2;
+						}
+						else if (samples[i] <= -1)
+						{
+							samples2[i] = 0;
+						}
+						else
+						{
+							samples2[i] = 2147483647U+2147483647U*(double)samples[i];
+						}
+					}
+					sio_write(sndio->hdl, samples2, numsamplesall*sizeof(uint32_t));
+				}
+			}
+			else
+			{
+				if (sndio->obtained_sig)
+				{
+					int32_t *samples2 = sndio->samplesu.i32;
+					for (i = 0; i < numsamplesall; i++)
+					{
+						if (samples[i] >= 1)
+						{
+							samples2[i] = (int32_t)bswap32((uint32_t)2147483647);
+						}
+						else if (samples[i] <= -1)
+						{
+							samples2[i] = (int32_t)bswap32((uint32_t)-2147483647);
+						}
+						else
+						{
+							samples2[i] = (int32_t)bswap32((uint32_t)2147483647*(double)samples[i]);
+						}
+					}
+					sio_write(sndio->hdl, samples2, numsamplesall*sizeof(int32_t));
+				}
+				else
+				{
+					uint32_t *samples2 = sndio->samplesu.u32;
+					for (i = 0; i < numsamplesall; i++)
+					{
+						if (samples[i] >= 1)
+						{
+							samples2[i] = bswap32(2147483647U*2);
+						}
+						else if (samples[i] <= -1)
+						{
+							samples2[i] = bswap32(0);
+						}
+						else
+						{
+							samples2[i] = bswap32(2147483647U+2147483647U*(double)samples[i]);
+						}
+					}
+					sio_write(sndio->hdl, samples2, numsamplesall*sizeof(uint32_t));
+				}
 			}
 		}
 		else
 		{
-			if (sndio->obtained_sig)
-			{
-				int16_t *samples2 = malloc(numsamplesall*sizeof(int16_t));
-				for (i = 0; i < numsamplesall; i++)
-				{
-					if (samples[i] >= 1)
-					{
-						samples2[i] = (int16_t)bswap16((uint16_t)32767);
-					}
-					else if (samples[i] <= -1)
-					{
-						samples2[i] = (int16_t)bswap16((uint16_t)-32767);
-					}
-					else
-					{
-						samples2[i] = (int16_t)bswap16((uint16_t)(32767*samples[i]));
-					}
-				}
-				sio_write(sndio->hdl, samples2, numsamplesall*sizeof(int16_t));
-				free(samples2);
-			}
-			else
-			{
-				uint16_t *samples2 = malloc(numsamplesall*sizeof(uint16_t));
-				for (i = 0; i < numsamplesall; i++)
-				{
-					if (samples[i] >= 1)
-					{
-						samples2[i] = bswap16(32767*2);
-					}
-					else if (samples[i] <= -1)
-					{
-						samples2[i] = bswap16(0);
-					}
-					else
-					{
-						samples2[i] = bswap16(32767+32767*samples[i]);
-					}
-				}
-				sio_write(sndio->hdl, samples2, numsamplesall*sizeof(uint16_t));
-				free(samples2);
-			}
+			abort();
 		}
-	}
-	else if (sndio->obtained_bits == 32 && sndio->obtained_bps == 4)
-	{
-		if (sndio->obtained_le == SIO_LE_NATIVE)
-		{
-			if (sndio->obtained_sig)
-			{
-				int32_t *samples2 = malloc(numsamplesall*sizeof(int32_t));
-				for (i = 0; i < numsamplesall; i++)
-				{
-					if (samples[i] >= 1)
-					{
-						samples2[i] = 2147483647;
-					}
-					else if (samples[i] <= -1)
-					{
-						samples2[i] = -2147483647;
-					}
-					else
-					{
-						samples2[i] = 2147483647*(double)samples[i];
-					}
-				}
-				sio_write(sndio->hdl, samples2, numsamplesall*sizeof(int32_t));
-				free(samples2);
-			}
-			else
-			{
-				uint32_t *samples2 = malloc(numsamplesall*sizeof(uint32_t));
-				for (i = 0; i < numsamplesall; i++)
-				{
-					if (samples[i] >= 1)
-					{
-						samples2[i] = 2147483647U*2;
-					}
-					else if (samples[i] <= -1)
-					{
-						samples2[i] = 0;
-					}
-					else
-					{
-						samples2[i] = 2147483647U+2147483647U*(double)samples[i];
-					}
-				}
-				sio_write(sndio->hdl, samples2, numsamplesall*sizeof(uint32_t));
-				free(samples2);
-			}
-		}
-		else
-		{
-			if (sndio->obtained_sig)
-			{
-				int32_t *samples2 = malloc(numsamplesall*sizeof(int32_t));
-				for (i = 0; i < numsamplesall; i++)
-				{
-					if (samples[i] >= 1)
-					{
-						samples2[i] = (int32_t)bswap32((uint32_t)2147483647);
-					}
-					else if (samples[i] <= -1)
-					{
-						samples2[i] = (int32_t)bswap32((uint32_t)-2147483647);
-					}
-					else
-					{
-						samples2[i] = (int32_t)bswap32((uint32_t)2147483647*(double)samples[i]);
-					}
-				}
-				sio_write(sndio->hdl, samples2, numsamplesall*sizeof(int32_t));
-				free(samples2);
-			}
-			else
-			{
-				uint32_t *samples2 = malloc(numsamplesall*sizeof(uint32_t));
-				for (i = 0; i < numsamplesall; i++)
-				{
-					if (samples[i] >= 1)
-					{
-						samples2[i] = bswap32(2147483647U*2);
-					}
-					else if (samples[i] <= -1)
-					{
-						samples2[i] = bswap32(0);
-					}
-					else
-					{
-						samples2[i] = bswap32(2147483647U+2147483647U*(double)samples[i]);
-					}
-				}
-				sio_write(sndio->hdl, samples2, numsamplesall*sizeof(uint32_t));
-				free(samples2);
-			}
-		}
-	}
-	else
-	{
-		abort();
+		samples += numsamplesall;
+		numsamples -= numsamplesall/dev->obtained.channels;
 	}
 }
 
@@ -323,6 +376,7 @@ struct sndout_device *sndout_open_sndio(struct sndout_settings *desired,
 	struct sio_par obtainedsio;
 	struct sndout_device *dev;
 	struct sndout_device_sndio *sio;
+	int isnull = 0;
 	hdl = sio_open(SIO_DEVANY, SIO_PLAY, 0);
 	if (hdl == NULL)
 	{
@@ -360,9 +414,62 @@ struct sndout_device *sndout_open_sndio(struct sndout_settings *desired,
 	sio->obtained_le = !!obtainedsio.le;
 	sio->obtained_sig = !!obtainedsio.sig;
 	sio->obtained_msb = !!obtainedsio.msb;
+	sio->samplessz = obtained->rate*obtained->channels/2; // half a second
+	if (sio->obtained_bits == 8 && sio->obtained_bps == 1)
+	{
+		if (sio->obtained_sig)
+		{
+			sio->samplesu.ch = malloc(sio->samplessz);
+			isnull = (sio->samplesu.ch == NULL);
+		}
+		else
+		{
+			sio->samplesu.uch = malloc(sio->samplessz);
+			isnull = (sio->samplesu.uch == NULL);
+		}
+	}
+	else if (sio->obtained_bits == 16 && sio->obtained_bps == 2)
+	{
+		if (sio->obtained_sig)
+		{
+			sio->samplesu.i16 = malloc(sio->samplessz*sizeof(*sio->samplesu.i16));
+			isnull = (sio->samplesu.i16 == NULL);
+		}
+		else
+		{
+			sio->samplesu.u16 = malloc(sio->samplessz*sizeof(*sio->samplesu.u16));
+			isnull = (sio->samplesu.u16 == NULL);
+		}
+	}
+	else if (sio->obtained_bits == 32 && sio->obtained_bps == 4)
+	{
+		if (sio->obtained_sig)
+		{
+			sio->samplesu.i32 = malloc(sio->samplessz*sizeof(*sio->samplesu.i32));
+			isnull = (sio->samplesu.i32 == NULL);
+		}
+		else
+		{
+			sio->samplesu.u32 = malloc(sio->samplessz*sizeof(*sio->samplesu.u32));
+			isnull = (sio->samplesu.u32 == NULL);
+		}
+	}
+	else
+	{
+		sio_close(hdl);
+		free(sio);
+		return NULL;
+	}
+	if (isnull)
+	{
+		sio_close(hdl);
+		free(sio);
+		return NULL;
+	}
 	dev = malloc(sizeof(*dev));
 	if (!dev)
 	{
+		free_samples(sio);
 		sio_close(hdl);
 		free(sio);
 		return NULL;
